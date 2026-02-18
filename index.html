@@ -27,7 +27,7 @@
   <div id="map"></div>
 
   <script>
-  // === 1. ZONE FALLBACK CENTERS ===
+  // === Zone fallback centers ===
   const zoneCenters = {
     "Highway West": [-30.464248, 30.637618],
     "Sea East": [-30.90, 30.45],
@@ -37,7 +37,7 @@
     "Unknown": [-30.85, 30.35]
   };
 
-  // === 2. COLOR DEFINITIONS ===
+  // === Color definitions ===
   const alertColors = {
     "general": { fill: "#d32f2f", border: "#b71c1c" },
     "suspicious": { fill: "#d32f2f", border: "#b71c1c" },
@@ -55,19 +55,22 @@
     "default": { fill: "#424242", border: "#212121" }
   };
 
-  // === 3. INITIALIZE MAP ===
+  // === Initialize map ===
   const map = L.map('map').setView([-30.85, 30.35], 12);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   }).addTo(map);
 
-  // === 4. SHEET ID ===
+  // === Sheet ID ===
   const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
 
-  // === 5. FEED URL ===
+  // === Feed URL ===
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
 
-  // === 6. LOAD EXISTING ALERTS ===
+  // === FORM BASE URL ===
+  const FORM_BASE_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfRG4BSZMwlZtPakPJNaiDoR7XFpZUNDOyXRFOSY8lhfK_GtA/viewform";
+
+  // === Load existing alerts ===
   fetch(url)
     .then(response => {
       if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
@@ -175,9 +178,6 @@
       if (markers.length > 0) {
         const group = L.featureGroup(markers);
         map.fitBounds(group.getBounds(), { padding: [50, 50] });
-        console.log('Map zoomed to fit markers');
-      } else {
-        console.log('No markers created');
       }
     })
     .catch(err => {
@@ -186,81 +186,81 @@
         '<p style="color:red; text-align:center; padding:20px;">Error loading map: ' + err.message + '</p>';
     });
 
-  // === MAP CLICK → COPY COORDS TO CLIPBOARD + TEMPORARY MARKER ===
+  // === MAP CLICK → CONFIRM BEFORE COPYING & TEMP MARKER ===
   map.on('click', function(e) {
     const lat = e.latlng.lat.toFixed(6);
     const lng = e.latlng.lng.toFixed(6);
     const coords = `${lat}, ${lng}`;
 
-    // Show popup with copy confirmation and buttons
-    const popupContent = `
+    // === Step 1: Confirmation popup ===
+    const confirmContent = `
       <div style="text-align:center; padding:12px; min-width:260px;">
-        <p style="margin:0 0 8px; font-weight:bold;">Coordinates copied to clipboard!</p>
-        <p style="margin:0 0 12px; font-size:1.1em; font-family:monospace; color:#1976d2;">
-          ${coords}
-        </p>
-        <p style="margin:0 0 12px; color:#555; font-size:0.9em;">
-          Paste into the Latitude/Longitude field in the form.
-        </p>
-        <button id="openFormBtn" style="background:#4caf50; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-size:1em; margin:0 8px;">
-          Open Form
+        <p style="margin:0 0 12px; font-weight:bold;">Report a new alert<br>at this location?</p>
+        <button id="confirmYes" style="background:#4caf50; color:white; border:none; padding:10px 20px; margin:0 8px; border-radius:6px; cursor:pointer; font-size:1em;">
+          Yes
         </button>
-        <button id="closeBtn" style="background:#757575; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-size:1em;">
-          Close
+        <button id="confirmNo" style="background:#757575; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-size:1em;">
+          No
         </button>
       </div>
     `;
 
-    const popup = L.popup()
+    const confirmPopup = L.popup()
       .setLatLng(e.latlng)
-      .setContent(popupContent)
+      .setContent(confirmContent)
       .openOn(map);
 
-    // Copy coordinates to clipboard
-    navigator.clipboard.writeText(coords)
-      .then(() => console.log('Coords copied:', coords))
-      .catch(err => console.error('Clipboard copy failed:', err));
-
-    // === TEMPORARY MARKER (red circle with label) ===
-    const tempMarker = L.circleMarker([lat, lng], {
-      radius: 12,
-      fillColor: '#ff1744',
-      color: '#d50000',
-      weight: 3,
-      opacity: 1,
-      fillOpacity: 0.7
-    }).addTo(map);
-
-    tempMarker.bindPopup(`
-      <b>New alert location (temporary)</b><br>
-      ${coords}<br>
-      <small>Refresh map after submitting to see final marker</small>
-    `).openPopup();
-
-    // Auto-close popup after 8 seconds (or when user clicks button)
     setTimeout(() => {
-      if (map.hasLayer(tempMarker)) map.removeLayer(tempMarker);
-    }, 8000);
+      const yesBtn = document.getElementById('confirmYes');
+      const noBtn = document.getElementById('confirmNo');
 
-    setTimeout(() => {
-      const openBtn = document.getElementById('openFormBtn');
-      const closeBtn = document.getElementById('closeBtn');
+      if (yesBtn) {
+        yesBtn.onclick = () => {
+          // User confirmed → copy coords & add temp marker
+          navigator.clipboard.writeText(coords)
+            .then(() => console.log('Coords copied:', coords))
+            .catch(err => console.error('Copy failed:', err));
 
-      if (openBtn) {
-        openBtn.onclick = () => {
-          // Open the form in a new tab (user pastes from clipboard)
+          // === Temporary marker (red, labeled, auto-remove after 12 seconds) ===
+          const tempMarker = L.circleMarker([lat, lng], {
+            radius: 12,
+            fillColor: '#ff1744',
+            color: '#d50000',
+            weight: 3,
+            opacity: 1,
+            fillOpacity: 0.7
+          }).addTo(map);
+
+          tempMarker.bindPopup(`
+            <b>New alert location (temporary)</b><br>
+            ${coords}<br>
+            <small>Paste into form – refresh map after submitting</small>
+          `).openPopup();
+
+          setTimeout(() => {
+            if (map.hasLayer(tempMarker)) map.removeLayer(tempMarker);
+          }, 12000);
+
+          // Show brief "Copied!" toast
+          const toast = document.createElement('div');
+          toast.innerHTML = 'Coordinates copied!<br>Paste into Latitude/Longitude field.';
+          toast.style = 'position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#323232ee; color:white; padding:12px 24px; border-radius:8px; z-index:2000; opacity:0; transition:opacity 0.4s; font-size:0.95em; text-align:center;';
+          document.body.appendChild(toast);
+          setTimeout(() => toast.style.opacity = '1', 100);
+          setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 400);
+          }, 3000);
+
+          // Open form in new tab
           window.open(FORM_BASE_URL, '_blank');
-          map.closePopup(popup);
-          // Optional: remove temp marker early
-          if (map.hasLayer(tempMarker)) map.removeLayer(tempMarker);
+
+          map.closePopup(confirmPopup);
         };
       }
 
-      if (closeBtn) {
-        closeBtn.onclick = () => {
-          map.closePopup(popup);
-          if (map.hasLayer(tempMarker)) map.removeLayer(tempMarker);
-        };
+      if (noBtn) {
+        noBtn.onclick = () => map.closePopup(confirmPopup);
       }
     }, 100);
   });
