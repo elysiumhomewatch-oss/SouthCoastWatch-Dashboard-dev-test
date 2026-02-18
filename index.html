@@ -392,6 +392,8 @@
       // Small delay for cluster to process before fitting bounds
       setTimeout(() => {
         if (allMarkers.length > 0) {
+        console.log('Markers in cluster:', markersCluster.getLayers().length);
+        console.log('Cluster bounds:', markersCluster.getBounds());
           map.fitBounds(markersCluster.getBounds(), { padding: [50, 50] });
         }
       }, 100);
