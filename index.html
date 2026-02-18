@@ -23,205 +23,165 @@
   <div id="map"></div>
 
   <script>
-    // === 1. ZONE FALLBACK CENTERS ===
-    const zoneCenters = {
-      "Highway West": [-30.464248, 30.637618],
-      "Sea East": [-30.90, 30.45],
-      "River North": [-30.82, 30.38],
-      "River South": [-30.88, 30.32],
-      "Central": [-30.85, 30.35],
-      "Unknown": [-30.85, 30.35]
-    };
+  // === 1. ZONE FALLBACK CENTERS ===
+  const zoneCenters = {
+    "Highway West": [-30.464248, 30.637618],
+    "Sea East": [-30.90, 30.45],
+    "River North": [-30.82, 30.38],
+    "River South": [-30.88, 30.32],
+    "Central": [-30.85, 30.35],
+    "Unknown": [-30.85, 30.35]
+  };
 
-    // === 2. COLOR BY ALERT TYPE ===
-    const alertColors = {
-      "general": { fill: "#d32f2f", border: "#b71c1c" },
-      "suspicious": { fill: "#d32f2f", border: "#b71c1c" },
-      "red wave": { fill: "#1976d2", border: "#0d47a1" },
-      "flood": { fill: "#1976d2", border: "#0d47a1" },
-      "amber blaze": { fill: "#f57c00", border: "#ef6c00" },
-      "fire": { fill: "#f57c00", border: "#ef6c00" },
-      "smoke": { fill: "#f57c00", border: "#ef6c00" },
-      "scam": { fill: "#7b1fa2", border: "#4a148c" },
-      "electrical": { fill: "#fbc02d", border: "#f9a825" },
-      "water": { fill: "#42a5f5", border: "#1976d2" },
-      "leak": { fill: "#42a5f5", border: "#1976d2" },
-      "dumping": { fill: "#795548", border: "#4e342e" },
-      "other municipal": { fill: "#757575", border: "#424242" },
-      "default": { fill: "#424242", border: "#212121" }
-    };
+  // === 2. COLOR DEFINITIONS ===
+  const alertColors = {
+    "general": { fill: "#d32f2f", border: "#b71c1c" },
+    "suspicious": { fill: "#d32f2f", border: "#b71c1c" },
+    "red wave": { fill: "#1976d2", border: "#0d47a1" },
+    "flood": { fill: "#1976d2", border: "#0d47a1" },
+    "amber blaze": { fill: "#f57c00", border: "#ef6c00" },
+    "fire": { fill: "#f57c00", border: "#ef6c00" },
+    "smoke": { fill: "#f57c00", border: "#ef6c00" },
+    "scam": { fill: "#7b1fa2", border: "#4a148c" },
+    "electrical": { fill: "#fbc02d", border: "#f9a825" },
+    "water": { fill: "#42a5f5", border: "#1976d2" },
+    "leak": { fill: "#42a5f5", border: "#1976d2" },
+    "dumping": { fill: "#795548", border: "#4e342e" },
+    "other municipal": { fill: "#757575", border: "#424242" },
+    "default": { fill: "#424242", border: "#212121" }
+  };
 
-    // === 3. INITIALIZE MAP ===
-    const map = L.map('map').setView([-30.85, 30.35], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+  // === 3. INITIALIZE MAP ===
+  const map = L.map('map').setView([-30.85, 30.35], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
 
-    // === 4. SHEET ID ===
-    const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
+  // === 4. SHEET ID ===
+  const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
 
-    // === 5. DATA FEED URL ===
-    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
+  // === 5. FEED URL ===
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
 
-    // === 6. YOUR GOOGLE FORM BASE URL (for pre-filling coordinates) ===
-    // Paste your form's viewform URL here (from Send → Link, NOT the embed URL)
-    const FORM_BASE_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfRG4BSZMwlZtPakPJNaiDoR7XFpZUNDOyXRFOSY8lhfK_GtA/viewform";
+  // === 6. LOAD EXISTING ALERTS ===
+  fetch(url)
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+      return response.text();
+    })
+    .then(text => {
+      let cleaned = text
+        .replace(/^\/\*(.|\n)*?\*\//, '')
+        .trim()
+        .replace(/^google\.visualization\.Query\.setResponse\(/, '')
+        .replace(/\);?$/, '');
 
-    // === 7. FORM FIELD ID FOR LAT/LNG QUESTION ===
-    // Find this using "Get pre-filled link" method:
-    // 1. Edit form → click lat/lng question → three-dot menu → Get pre-filled link
-    // 2. Type dummy text in field → Get link → copy the entry.XXXXXXXX number
-    const LAT_LNG_FIELD_ID = "entry.950991548"; // e.g. "entry.12345678901234567890"
+      if (cleaned.startsWith('/') || cleaned.startsWith('<') || !cleaned.startsWith('{')) {
+        throw new Error('Cleaned response not valid JSON');
+      }
 
-    // === 8. LOAD EXISTING ALERTS ===
-    fetch(url)
-      .then(response => {
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-        return response.text();
-      })
-      .then(text => {
-        let cleaned = text
-          .replace(/^\/\*(.|\n)*?\*\//, '')
-          .trim()
-          .replace(/^google\.visualization\.Query\.setResponse\(/, '')
-          .replace(/\);?$/, '');
+      const data = JSON.parse(cleaned);
 
-        if (cleaned.startsWith('/') || cleaned.startsWith('<') || !cleaned.startsWith('{')) {
-          throw new Error('Cleaned response not valid JSON');
-        }
+      if (!data || !data.table) {
+        throw new Error('No data.table in response');
+      }
 
-        const data = JSON.parse(cleaned);
+      const rows = data.table.rows || [];
+      console.log(`Loaded ${rows.length} rows from Sheet`);
 
-        if (!data || !data.table) {
-          throw new Error('No data.table in response');
-        }
+      const markers = [];
 
-        const rows = data.table.rows || [];
-        console.log(`Loaded ${rows.length} rows`);
+      rows.forEach((row, index) => {
+        const cells = row.c || [];
 
-        const markers = [];
+        const timestamp = cells[0]?.v || '';
+        const reporter   = cells[1]?.v || 'Anonymous';
+        const zone       = cells[3]?.v || 'Unknown';
+        const spotDesc   = cells[4]?.v || '';
+        const combinedCoords = cells[5]?.v || '';
+        const alertTypeRaw = cells[6]?.v || 'Other';
+        const alertType = alertTypeRaw.toLowerCase().trim();
+        const details    = cells[7]?.v || '';
+        const photo      = cells[8]?.v || '';
 
-        rows.forEach(row => {
-          const c = row.c || [];
-          const alertTypeRaw = c[6]?.v || 'Other';
-          const alertType = alertTypeRaw.toLowerCase().trim();
-          const details = c[7]?.v || '';
-          const descLower = details.toLowerCase();
-
-          let lat = null, lng = null;
-          const coords = c[5]?.v || '';
-          if (coords) {
-            const cleanCoords = coords.replace(/[^\d\.\-,\s]/g, '').trim();
-            if (cleanCoords.includes(',')) {
-              const parts = cleanCoords.split(',').slice(0,2).map(s => parseFloat(s.trim()));
-              if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-                lat = parts[0];
-                lng = parts[1];
-              }
+        let lat = null, lng = null;
+        if (combinedCoords) {
+          const cleanedCoords = combinedCoords.replace(/[^\d\.\-,\s]/g, '').trim();
+          if (cleanedCoords.includes(',')) {
+            const parts = cleanedCoords.split(',').slice(0, 2).map(s => parseFloat(s.trim()));
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+              lat = parts[0];
+              lng = parts[1];
             }
           }
+        }
 
-          if (lat === null || lng === null) {
-            const center = zoneCenters[c[3]?.v || 'Unknown'] || [-30.85, 30.35];
-            lat = center[0];
-            lng = center[1];
-          }
+        if (lat === null || lng === null) {
+          const center = zoneCenters[zone] || [-30.85, 30.35];
+          lat = center[0];
+          lng = center[1];
+        }
 
-          let colorInfo = alertColors["default"];
-          if (alertType.includes("general") || alertType.includes("suspicious")) {
-            colorInfo = alertColors["general"];
-          } else if (alertType.includes("red wave") || alertType.includes("flood")) {
-            colorInfo = alertColors["red wave"];
-          } else if (alertType.includes("amber blaze") || alertType.includes("fire") || alertType.includes("smoke")) {
-            colorInfo = alertColors["amber blaze"];
-          } else if (alertType.includes("scam")) {
-            colorInfo = alertColors["scam"];
-          } else if (alertType.includes("electrical")) {
-            colorInfo = alertColors["electrical"];
-          } else if (alertType.includes("water") || alertType.includes("leak")) {
-            colorInfo = alertColors["water"];
-          } else if (alertType.includes("dumping") || alertType.includes("rubbish") || alertType.includes("trash") || alertType.includes("garbage")) {
+        let colorInfo = alertColors["default"];
+        const descLower = details.toLowerCase();
+
+        if (alertType.includes("general") || alertType.includes("suspicious")) {
+          colorInfo = alertColors["general"];
+        } else if (alertType.includes("red wave") || alertType.includes("flood")) {
+          colorInfo = alertColors["red wave"];
+        } else if (alertType.includes("amber blaze") || alertType.includes("fire") || alertType.includes("smoke")) {
+          colorInfo = alertColors["amber blaze"];
+        } else if (alertType.includes("scam")) {
+          colorInfo = alertColors["scam"];
+        } else if (alertType.includes("electrical")) {
+          colorInfo = alertColors["electrical"];
+        } else if (alertType.includes("water") || alertType.includes("leak")) {
+          colorInfo = alertColors["water"];
+        } else if (alertType.includes("dumping") || alertType.includes("rubbish") || alertType.includes("trash") || alertType.includes("garbage")) {
+          colorInfo = alertColors["dumping"];
+        } else if (alertType.includes("other municipal") || alertType.includes("potholes") || alertType.includes("lights") || alertType.includes("bushes")) {
+          colorInfo = alertColors["other municipal"];
+        } else if (alertType === "other" || alertType === "") {
+          if (descLower.includes("bin") || descLower.includes("overflow") || descLower.includes("rubbish") || descLower.includes("trash") || descLower.includes("garbage") || descLower.includes("dump")) {
             colorInfo = alertColors["dumping"];
-          } else if (alertType.includes("other municipal") || alertType.includes("potholes") || alertType.includes("lights") || alertType.includes("bushes")) {
-            colorInfo = alertColors["other municipal"];
-          } else if (alertType === "other" || alertType === "") {
-            if (descLower.includes("bin") || descLower.includes("overflow") || descLower.includes("rubbish") || descLower.includes("trash") || descLower.includes("garbage") || descLower.includes("dump")) {
-              colorInfo = alertColors["dumping"];
-            }
           }
-
-          const marker = L.circleMarker([lat, lng], {
-            radius: 10,
-            fillColor: colorInfo.fill,
-            color: colorInfo.border,
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.85
-          }).addTo(map);
-
-          marker.bindPopup(`
-            <b>${alertTypeRaw} - ${zone}</b><br>
-            ${spotDesc}<br>
-            ${details.substring(0, 150)}${details.length > 150 ? '...' : ''}<br>
-            Reported: ${timestamp}<br>
-            By: ${reporter}<br>
-            ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
-          `);
-
-          markers.push(marker);
-        });
-
-        if (markers.length > 0) {
-          const group = L.featureGroup(markers);
-          map.fitBounds(group.getBounds(), { padding: [50, 50] });
         }
-      })
-      .catch(err => {
-        console.error('Error loading Sheet:', err);
-        document.body.innerHTML += `<p style="color:red; text-align:center; padding:20px;">Error loading map: ${err.message}</p>`;
+
+        const marker = L.circleMarker([lat, lng], {
+          radius: 10,
+          fillColor: colorInfo.fill,
+          color: colorInfo.border,
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.85
+        }).addTo(map);
+
+        marker.bindPopup(`
+          <b>${alertTypeRaw} - ${zone}</b><br>
+          ${spotDesc}<br>
+          ${details.substring(0, 150)}${details.length > 150 ? '...' : ''}<br>
+          Reported: ${timestamp}<br>
+          By: ${reporter}<br>
+          ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
+        `);
+
+        markers.push(marker);
       });
 
-  // === MAP CLICK → REPORT NEW ALERT AT LOCATION ===
-  map.on('click', function(e) {
-    const lat = e.latlng.lat.toFixed(8);
-    const lng = e.latlng.lng.toFixed(8);
-    const coords = `${lat}, ${lng}`;
-
-    const popupContent = `
-      <div style="text-align:center; padding:10px; min-width:240px;">
-        <p style="margin:0 0 12px; font-weight:bold;">Report a new alert<br>at this location?</p>
-        <button id="yesBtn" style="background:#1976d2; color:white; border:none; padding:10px 20px; margin:0 8px; border-radius:6px; cursor:pointer; font-size:1em;">
-          Yes – use these coordinates
-        </button>
-        <button id="noBtn" style="background:#757575; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-size:1em;">
-          No / Cancel
-        </button>
-      </div>
-    `;
-
-    const popup = L.popup()
-      .setLatLng(e.latlng)
-      .setContent(popupContent)
-      .openOn(map);
-
-    setTimeout(() => {
-      const yes = document.getElementById('yesBtn');
-      const no  = document.getElementById('noBtn');
-
-      if (yes) {
-        yes.onclick = () => {
-          // === PRE-FILL COORDINATES IN FORM ===
-          const prefillUrl = `${FORM_BASE_URL}?${LAT_LNG_FIELD_ID}=${encodeURIComponent(coords)}`;
-          window.open(prefillUrl, '_blank');
-          map.closePopup(popup);
-        };
+      // === Auto-zoom using the markers array (no re-mapping rows) ===
+      if (markers.length > 0) {
+        const group = L.featureGroup(markers);
+        map.fitBounds(group.getBounds(), { padding: [50, 50] });
+        console.log('Map zoomed to fit markers');
+      } else {
+        console.log('No markers created');
       }
-
-      if (no) {
-        no.onclick = () => map.closePopup(popup);
-      }
-    }, 100);
-  });
+    })
+    .catch(err => {
+      console.error('Error loading Sheet data:', err);
+      document.body.innerHTML += 
+        '<p style="color:red; text-align:center; padding:20px;">Error loading map: ' + err.message + '</p>';
+    });
 </script>
 </body>
 </html>
