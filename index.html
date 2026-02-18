@@ -5,101 +5,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   
-  <!-- Leaflet CSS & JS – latest stable version -->
+  <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Basic styling – clean, readable, mobile-friendly -->
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: #f8f9fa;
-      color: #333;
-    }
-    h1 {
-      text-align: center;
-      color: #1a3c6d;
-      margin-bottom: 10px;
-    }
-    #map {
-      height: 600px;
-      margin: 20px auto;
-      max-width: 1200px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    .leaflet-popup-content {
-      margin: 0 !important;
-      padding: 8px !important;
-      min-width: 220px;
-    }
-    details {
-      margin: 0 auto 30px;
-      max-width: 800px;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    summary {
-      font-size: 1.3em;
-      font-weight: bold;
-      background: #e3f2fd;
-      padding: 16px;
-      cursor: pointer;
-      border-radius: 8px;
-      transition: background 0.2s;
-    }
-    summary:hover {
-      background: #bbdefb;
-    }
-    details[open] summary {
-      border-radius: 8px 8px 0 0;
-    }
-    .form-container {
-      padding: 20px;
-      background: white;
-      border: 1px solid #ddd;
-      border-top: none;
-      border-radius: 0 0 8px 8px;
-    }
-    @media (max-width: 600px) {
-      body { padding: 10px; }
-      #map { height: 400px; }
-      summary { font-size: 1.1em; padding: 12px; }
-    }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
+    h1 { text-align: center; color: #1a3c6d; margin-bottom: 10px; }
+    #map { height: 600px; margin: 20px auto; max-width: 1200px; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .leaflet-popup-content { margin: 0 !important; padding: 8px !important; min-width: 240px; }
   </style>
 </head>
 <body>
-
-  <!-- ==================== PAGE TITLE ==================== -->
   <h1>🌊 SouthCoastWatch Community Dashboard</h1>
 
-  <!-- ==================== COLLAPSIBLE FORM SECTION ==================== -->
-  <!-- 
-    This is the embedded Google Form. 
-    It collapses by default so the map is visible first.
-    Change height if your form needs more/less space.
-  -->
-  <details>
-    <summary>➕ Report a New Alert (click to open form)</summary>
-    <div class="form-container">
-      <!-- === PASTE YOUR GOOGLE FORM EMBED URL HERE === -->
-      <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSfRG4BSZMwlZtPakPJNaiDoR7XFpZUNDOyXRFOSY8lhfK_GtA/viewform?embedded=true"
-        width="100%" height="800" frameborder="0" marginheight="0" marginwidth="0">
-        Loading…
-      </iframe>
-    </div>
-  </details>
-
-  <!-- ==================== MAP CONTAINER ==================== -->
+  <!-- Map takes center stage – no permanent form at top anymore -->
   <div id="map"></div>
 
-  <!-- ==================== MAIN SCRIPT ==================== -->
   <script>
-    // === 1. ZONE FALLBACK COORDINATES ===
-    // If no lat/lng provided in form, use center of this zone
+    // === 1. ZONE FALLBACK CENTERS ===
     const zoneCenters = {
       "Highway West": [-30.464248, 30.637618],
       "Sea East": [-30.90, 30.45],
@@ -111,20 +35,20 @@
 
     // === 2. COLOR BY ALERT TYPE ===
     const alertColors = {
-      "general": { fill: "#d32f2f", border: "#b71c1c" },           // Red
+      "general": { fill: "#d32f2f", border: "#b71c1c" },
       "suspicious": { fill: "#d32f2f", border: "#b71c1c" },
-      "red wave": { fill: "#1976d2", border: "#0d47a1" },          // Blue
+      "red wave": { fill: "#1976d2", border: "#0d47a1" },
       "flood": { fill: "#1976d2", border: "#0d47a1" },
-      "amber blaze": { fill: "#f57c00", border: "#ef6c00" },       // Orange
+      "amber blaze": { fill: "#f57c00", border: "#ef6c00" },
       "fire": { fill: "#f57c00", border: "#ef6c00" },
       "smoke": { fill: "#f57c00", border: "#ef6c00" },
-      "scam": { fill: "#7b1fa2", border: "#4a148c" },              // Purple
-      "electrical": { fill: "#fbc02d", border: "#f9a825" },        // Yellow
-      "water": { fill: "#42a5f5", border: "#1976d2" },             // Light Blue
+      "scam": { fill: "#7b1fa2", border: "#4a148c" },
+      "electrical": { fill: "#fbc02d", border: "#f9a825" },
+      "water": { fill: "#42a5f5", border: "#1976d2" },
       "leak": { fill: "#42a5f5", border: "#1976d2" },
-      "dumping": { fill: "#795548", border: "#4e342e" },           // Brown
-      "other municipal": { fill: "#757575", border: "#424242" },   // Gray
-      "default": { fill: "#424242", border: "#212121" }            // Dark Gray
+      "dumping": { fill: "#795548", border: "#4e342e" },
+      "other municipal": { fill: "#757575", border: "#424242" },
+      "default": { fill: "#424242", border: "#212121" }
     };
 
     // === 3. INITIALIZE MAP ===
@@ -133,24 +57,28 @@
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    // === 4. YOUR SHEET ID ===
+    // === 4. SHEET ID ===
     const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
 
-    // === 5. PUBLIC DATA FEED URL ===
+    // === 5. DATA FEED URL ===
     const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
 
-    // === 6. YOUR GOOGLE FORM BASE URL (for pre-filling coords) ===
-    // Replace with your real form's viewform URL
+    // === 6. YOUR GOOGLE FORM BASE URL (for pre-filling coordinates) ===
+    // Paste your form's viewform URL here (from Send → Link, NOT the embed URL)
     const FORM_BASE_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfRG4BSZMwlZtPakPJNaiDoR7XFpZUNDOyXRFOSY8lhfK_GtA/viewform";
 
     // === 7. FORM FIELD ID FOR LAT/LNG QUESTION ===
-    // Find this: Open form → click the lat/lng question → look at URL for entry.1234567890
-    // Paste the number here:
-    const LAT_LNG_FIELD_ID = "YOUR_ENTRY_ID_HERE"; // e.g. "entry.1234567890"
+    // Find this using "Get pre-filled link" method:
+    // 1. Edit form → click lat/lng question → three-dot menu → Get pre-filled link
+    // 2. Type dummy text in field → Get link → copy the entry.XXXXXXXX number
+    const LAT_LNG_FIELD_ID = "entry.950991548"; // e.g. "entry.12345678901234567890"
 
-    // === 8. LOAD EXISTING ALERTS FROM SHEET ===
+    // === 8. LOAD EXISTING ALERTS ===
     fetch(url)
-      .then(r => r.ok ? r.text() : Promise.reject(`HTTP ${r.status}`))
+      .then(response => {
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        return response.text();
+      })
       .then(text => {
         let cleaned = text
           .replace(/^\/\*(.|\n)*?\*\//, '')
@@ -158,12 +86,19 @@
           .replace(/^google\.visualization\.Query\.setResponse\(/, '')
           .replace(/\);?$/, '');
 
-        if (!cleaned.startsWith('{')) throw new Error('Invalid JSON after cleaning');
+        if (cleaned.startsWith('/') || cleaned.startsWith('<') || !cleaned.startsWith('{')) {
+          throw new Error('Cleaned response not valid JSON');
+        }
 
         const data = JSON.parse(cleaned);
-        if (!data?.table) throw new Error('No table in response');
+
+        if (!data || !data.table) {
+          throw new Error('No data.table in response');
+        }
 
         const rows = data.table.rows || [];
+        console.log(`Loaded ${rows.length} rows`);
+
         const markers = [];
 
         rows.forEach(row => {
@@ -246,7 +181,7 @@
         document.body.innerHTML += `<p style="color:red; text-align:center; padding:20px;">Error loading map: ${err.message}</p>`;
       });
 
-  // === NEW FEATURE: Click anywhere → ask to report new alert at that spot ===
+  // === MAP CLICK → REPORT NEW ALERT AT LOCATION ===
   map.on('click', function(e) {
     const lat = e.latlng.lat.toFixed(8);
     const lng = e.latlng.lng.toFixed(8);
@@ -269,22 +204,15 @@
       .setContent(popupContent)
       .openOn(map);
 
-    // Attach button listeners after popup is in DOM
     setTimeout(() => {
       const yes = document.getElementById('yesBtn');
       const no  = document.getElementById('noBtn');
 
       if (yes) {
         yes.onclick = () => {
-          // === PASTE YOUR FORM BASE URL HERE ===
-          const formUrl = "https://docs.google.com/forms/d/e/1FAIpQLSfRG4BSZMwlZtPakPJNaiDoR7XFpZUNDOyXRFOSY8lhfK_GtA/viewform";
-
-          // === PASTE YOUR LAT/LNG FIELD ENTRY ID HERE ===
-          // (Open form → click lat/lng question → look at URL for entry.1234567890)
-          const entryId = "entry.950991548";
-
-          const prefill = `${formUrl}?${entryId}=${encodeURIComponent(coords)}`;
-          window.open(prefill, '_blank');
+          // === PRE-FILL COORDINATES IN FORM ===
+          const prefillUrl = `${FORM_BASE_URL}?${LAT_LNG_FIELD_ID}=${encodeURIComponent(coords)}`;
+          window.open(prefillUrl, '_blank');
           map.closePopup(popup);
         };
       }
