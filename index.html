@@ -216,45 +216,43 @@
 
       if (yesBtn) {
         yesBtn.onclick = () => {
-          // Confirmed → copy to clipboard
-          navigator.clipboard.writeText(coords)
-            .then(() => console.log('Coords copied:', coords))
-            .catch(err => console.error('Copy failed:', err));
+  // Copy to clipboard (already done earlier in the handler)
+  navigator.clipboard.writeText(coords)
+    .then(() => console.log('Coords copied:', coords))
+    .catch(err => console.error('Copy failed:', err));
 
-          // === TEMPORARY MARKER (red circle with label) ===
-          const tempMarker = L.circleMarker([lat, lng], {
-            radius: 12,
-            fillColor: '#ff1744',
-            color: '#d50000',
-            weight: 3,
-            opacity: 1,
-            fillOpacity: 0.7
-          }).addTo(map);
+  // Add temporary marker (already done earlier)
+  const tempMarker = L.circleMarker([lat, lng], {
+    radius: 12,
+    fillColor: '#ff1744',
+    color: '#d50000',
+    weight: 3,
+    opacity: 1,
+    fillOpacity: 0.7
+  }).addTo(map);
 
-          tempMarker.bindPopup(`
-            <b>New alert location (temporary)</b><br>
-            ${coords}<br>
-            <small>Paste into form – refresh map after submitting</small>
-          `).openPopup();
+  tempMarker.bindPopup(`
+    <b>New alert location (temporary)</b><br>
+    ${coords}<br>
+    <small>Paste into form – refresh map after submitting</small>
+  `).openPopup();
 
-          // Marker stays until manual refresh (no timed removal)
+  // Show toast
+  const toast = document.createElement('div');
+  toast.innerHTML = 'Coordinates copied!<br>Paste into Latitude/Longitude field.';
+  toast.style = 'position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#323232ee; color:white; padding:12px 24px; border-radius:8px; z-index:2000; opacity:0; transition:opacity 0.4s; font-size:0.95em; text-align:center;';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.style.opacity = '1', 100);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 400);
+  }, 3000);
 
-          // Show brief toast confirmation
-          const toast = document.createElement('div');
-          toast.innerHTML = 'Coordinates copied!<br>Paste into Latitude/Longitude field.';
-          toast.style = 'position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#323232ee; color:white; padding:12px 24px; border-radius:8px; z-index:2000; opacity:0; transition:opacity 0.4s; font-size:0.95em; text-align:center;';
-          document.body.appendChild(toast);
-          setTimeout(() => toast.style.opacity = '1', 100);
-          setTimeout(() => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 400);
-          }, 3000);
+  // Open form (hard-coded URL – replace with your real viewform URL)
+  window.open("https://docs.google.com/forms/d/e/1FAIpQLSfRG4BSZMwlZtPakPJNaiDoR7XFpZUNDOyXRFOSY8lhfK_GtA/viewform", '_blank');
 
-          // Open form in new tab
-          window.open(FORM_BASE_URL, '_blank');
-
-          map.closePopup(confirmPopup);
-        };
+  map.closePopup(popup);
+};
       }
 
       if (noBtn) {
