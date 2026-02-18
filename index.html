@@ -27,7 +27,7 @@
   <div id="map"></div>
 
   <script>
-  // === Zone fallback centers ===
+  // === 1. ZONE FALLBACK CENTERS ===
   const zoneCenters = {
     "Highway West": [-30.464248, 30.637618],
     "Sea East": [-30.90, 30.45],
@@ -37,7 +37,7 @@
     "Unknown": [-30.85, 30.35]
   };
 
-  // === Color definitions ===
+  // === 2. COLOR DEFINITIONS ===
   const alertColors = {
     "general": { fill: "#d32f2f", border: "#b71c1c" },
     "suspicious": { fill: "#d32f2f", border: "#b71c1c" },
@@ -55,22 +55,19 @@
     "default": { fill: "#424242", border: "#212121" }
   };
 
-  // === Initialize map ===
+  // === 3. INITIALIZE MAP ===
   const map = L.map('map').setView([-30.85, 30.35], 12);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   }).addTo(map);
 
-  // === Sheet ID ===
+  // === 4. SHEET ID ===
   const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
 
-  // === Feed URL ===
+  // === 5. FEED URL ===
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
 
-  // === FORM BASE URL ===
-  const FORM_BASE_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfRG4BSZMwlZtPakPJNaiDoR7XFpZUNDOyXRFOSY8lhfK_GtA/viewform";
-
-  // === Load existing alerts ===
+  // === 6. LOAD EXISTING ALERTS (one-time on page load) ===
   fetch(url)
     .then(response => {
       if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
@@ -178,6 +175,9 @@
       if (markers.length > 0) {
         const group = L.featureGroup(markers);
         map.fitBounds(group.getBounds(), { padding: [50, 50] });
+        console.log('Map zoomed to fit markers');
+      } else {
+        console.log('No markers created');
       }
     })
     .catch(err => {
@@ -186,13 +186,13 @@
         '<p style="color:red; text-align:center; padding:20px;">Error loading map: ' + err.message + '</p>';
     });
 
-  // === MAP CLICK → CONFIRM BEFORE COPYING & TEMP MARKER ===
+  // === MAP CLICK → CONFIRM → COPY COORDS + TEMPORARY MARKER ===
   map.on('click', function(e) {
     const lat = e.latlng.lat.toFixed(6);
     const lng = e.latlng.lng.toFixed(6);
     const coords = `${lat}, ${lng}`;
 
-    // === Step 1: Confirmation popup ===
+    // Step 1: Simple confirmation popup
     const confirmContent = `
       <div style="text-align:center; padding:12px; min-width:260px;">
         <p style="margin:0 0 12px; font-weight:bold;">Report a new alert<br>at this location?</p>
@@ -212,16 +212,16 @@
 
     setTimeout(() => {
       const yesBtn = document.getElementById('confirmYes');
-      const noBtn = document.getElementById('confirmNo');
+      const noBtn  = document.getElementById('confirmNo');
 
       if (yesBtn) {
         yesBtn.onclick = () => {
-          // User confirmed → copy coords & add temp marker
+          // User confirmed → copy to clipboard
           navigator.clipboard.writeText(coords)
             .then(() => console.log('Coords copied:', coords))
             .catch(err => console.error('Copy failed:', err));
 
-          // === Temporary marker (red, labeled, auto-remove after 12 seconds) ===
+          // === TEMPORARY MARKER (red circle with label) ===
           const tempMarker = L.circleMarker([lat, lng], {
             radius: 12,
             fillColor: '#ff1744',
@@ -237,11 +237,11 @@
             <small>Paste into form – refresh map after submitting</small>
           `).openPopup();
 
-          setTimeout(() => {
-            if (map.hasLayer(tempMarker)) map.removeLayer(tempMarker);
-          }, 12000);
+          // Temp marker stays until manual refresh (no auto-remove)
+          // If you want auto-remove later, add:
+          // setTimeout(() => map.removeLayer(tempMarker), 30000);
 
-          // Show brief "Copied!" toast
+          // Show brief toast confirmation
           const toast = document.createElement('div');
           toast.innerHTML = 'Coordinates copied!<br>Paste into Latitude/Longitude field.';
           toast.style = 'position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#323232ee; color:white; padding:12px 24px; border-radius:8px; z-index:2000; opacity:0; transition:opacity 0.4s; font-size:0.95em; text-align:center;';
