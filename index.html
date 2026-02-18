@@ -9,182 +9,271 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+  <!-- Extra basemap tiles (all free & attribution-compliant) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+
   <style>
     body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
     h1 { text-align: center; color: #1a3c6d; margin-bottom: 10px; }
-    #map { height: 600px; margin: 20px auto; max-width: 1200px; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-    .leaflet-popup-content { margin: 0 !important; padding: 8px !important; min-width: 240px; }
+    #map { height: 600px; margin: 20px auto; max-width: 1200px; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: relative; }
+    #map-type-selector {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      font-size: 1em;
+      border: 1px solid #ccc;
+    }
+    #map-type-selector select {
+      padding: 6px;
+      font-size: 1em;
+      border-radius: 4px;
+      border: 1px solid #999;
+      background: #f9f9f9;
+      cursor: pointer;
+    }
+    #refresh-btn-container {
+      text-align: center;
+      margin: 20px 0;
+    }
+    #refresh-btn {
+      padding: 12px 24px;
+      font-size: 1.1em;
+      background: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <h1>🌊 SouthCoastWatch Community Dashboard</h1>
- <div style="text-align:center; margin: 20px 0;">
-  <button onclick="location.reload()" style="padding:12px 24px; font-size:1.1em; background:#1976d2; color:white; border:none; border-radius:8px; cursor:pointer;">
-    Refresh Map (check for new alerts)
-  </button>
-</div>
-  <!-- Map takes center stage – no permanent form at top anymore -->
-  <div id="map"></div>
+
+  <div id="refresh-btn-container">
+    <button id="refresh-btn" onclick="location.reload()">
+      Refresh Map (check for new alerts)
+    </button>
+  </div>
+
+  <!-- Map container -->
+  <div id="map">
+    <!-- Basemap selector (top-right corner) -->
+    <div id="map-type-selector">
+      <label for="basemap">Map Type: </label>
+      <select id="basemap">
+        <option value="osm">Street Map (default)</option>
+        <option value="satellite">Satellite</option>
+        <option value="terrain">Terrain / Topo</option>
+        <option value="dark">Dark Mode</option>
+      </select>
+    </div>
+  </div>
 
   <script>
-  // === 1. ZONE FALLBACK CENTERS ===
-  const zoneCenters = {
-    "Highway West": [-30.464248, 30.637618],
-    "Sea East": [-30.90, 30.45],
-    "River North": [-30.82, 30.38],
-    "River South": [-30.88, 30.32],
-    "Central": [-30.85, 30.35],
-    "Unknown": [-30.85, 30.35]
-  };
+    // === 1. ZONE FALLBACK CENTERS ===
+    const zoneCenters = {
+      "Highway West": [-30.464248, 30.637618],
+      "Sea East": [-30.90, 30.45],
+      "River North": [-30.82, 30.38],
+      "River South": [-30.88, 30.32],
+      "Central": [-30.85, 30.35],
+      "Unknown": [-30.85, 30.35]
+    };
 
-  // === 2. COLOR DEFINITIONS ===
-  const alertColors = {
-    "general": { fill: "#d32f2f", border: "#b71c1c" },
-    "suspicious": { fill: "#d32f2f", border: "#b71c1c" },
-    "red wave": { fill: "#1976d2", border: "#0d47a1" },
-    "flood": { fill: "#1976d2", border: "#0d47a1" },
-    "amber blaze": { fill: "#f57c00", border: "#ef6c00" },
-    "fire": { fill: "#f57c00", border: "#ef6c00" },
-    "smoke": { fill: "#f57c00", border: "#ef6c00" },
-    "scam": { fill: "#7b1fa2", border: "#4a148c" },
-    "electrical": { fill: "#fbc02d", border: "#f9a825" },
-    "water": { fill: "#42a5f5", border: "#1976d2" },
-    "leak": { fill: "#42a5f5", border: "#1976d2" },
-    "dumping": { fill: "#795548", border: "#4e342e" },
-    "other municipal": { fill: "#757575", border: "#424242" },
-    "default": { fill: "#424242", border: "#212121" }
-  };
+    // === 2. COLOR DEFINITIONS ===
+    const alertColors = {
+      "general": { fill: "#d32f2f", border: "#b71c1c" },
+      "suspicious": { fill: "#d32f2f", border: "#b71c1c" },
+      "red wave": { fill: "#1976d2", border: "#0d47a1" },
+      "flood": { fill: "#1976d2", border: "#0d47a1" },
+      "amber blaze": { fill: "#f57c00", border: "#ef6c00" },
+      "fire": { fill: "#f57c00", border: "#ef6c00" },
+      "smoke": { fill: "#f57c00", border: "#ef6c00" },
+      "scam": { fill: "#7b1fa2", border: "#4a148c" },
+      "electrical": { fill: "#fbc02d", border: "#f9a825" },
+      "water": { fill: "#42a5f5", border: "#1976d2" },
+      "leak": { fill: "#42a5f5", border: "#1976d2" },
+      "dumping": { fill: "#795548", border: "#4e342e" },
+      "other municipal": { fill: "#757575", border: "#424242" },
+      "default": { fill: "#424242", border: "#212121" }
+    };
 
-  // === 3. INITIALIZE MAP ===
-  const map = L.map('map').setView([-30.85, 30.35], 12);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map);
+    // === 3. AVAILABLE BASEMAP LAYERS ===
+    const basemaps = {
+      osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }),
+      satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+      }),
+      terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, SRTM | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)'
+      }),
+      dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd'
+      })
+    };
 
-  // === 4. SHEET ID ===
-  const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
+    // === 4. INITIALIZE MAP ===
+    const map = L.map('map', {
+      center: [-30.85, 30.35],
+      zoom: 12,
+      layers: [basemaps.osm]  // default to OSM
+    });
 
-  // === 5. FEED URL ===
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
+    // === 5. RESTORE LAST CHOSEN BASEMAP FROM LOCALSTORAGE ===
+    const savedBasemap = localStorage.getItem('preferredBasemap') || 'osm';
+    const currentLayer = basemaps[savedBasemap];
+    currentLayer.addTo(map);
 
-  // === 6. LOAD EXISTING ALERTS ===
-  fetch(url)
-    .then(response => {
-      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-      return response.text();
-    })
-    .then(text => {
-      let cleaned = text
-        .replace(/^\/\*(.|\n)*?\*\//, '')
-        .trim()
-        .replace(/^google\.visualization\.Query\.setResponse\(/, '')
-        .replace(/\);?$/, '');
+    // Update dropdown to match saved choice
+    document.getElementById('basemap').value = savedBasemap;
 
-      if (cleaned.startsWith('/') || cleaned.startsWith('<') || !cleaned.startsWith('{')) {
-        throw new Error('Cleaned response not valid JSON');
-      }
+    // === 6. HANDLE BASEMAP CHANGE ===
+    document.getElementById('basemap').addEventListener('change', function(e) {
+      const selected = e.target.value;
 
-      const data = JSON.parse(cleaned);
-
-      if (!data || !data.table) {
-        throw new Error('No data.table in response');
-      }
-
-      const rows = data.table.rows || [];
-      console.log(`Loaded ${rows.length} rows from Sheet`);
-
-      const markers = [];
-
-      rows.forEach(row => {
-        const cells = row.c || [];
-
-        const timestamp = cells[0]?.v || '';
-        const reporter   = cells[1]?.v || 'Anonymous';
-        const zone       = cells[3]?.v || 'Unknown';
-        const spotDesc   = cells[4]?.v || '';
-        const combinedCoords = cells[5]?.v || '';
-        const alertTypeRaw = cells[6]?.v || 'Other';
-        const alertType = alertTypeRaw.toLowerCase().trim();
-        const details    = cells[7]?.v || '';
-        const photo      = cells[8]?.v || '';
-
-        let lat = null, lng = null;
-        if (combinedCoords) {
-          const cleanedCoords = combinedCoords.replace(/[^\d\.\-,\s]/g, '').trim();
-          if (cleanedCoords.includes(',')) {
-            const parts = cleanedCoords.split(',').slice(0, 2).map(s => parseFloat(s.trim()));
-            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-              lat = parts[0];
-              lng = parts[1];
-            }
-          }
+      // Remove current basemap
+      map.eachLayer(layer => {
+        if (layer instanceof L.TileLayer) {
+          map.removeLayer(layer);
         }
-
-        if (lat === null || lng === null) {
-          const center = zoneCenters[zone] || [-30.85, 30.35];
-          lat = center[0];
-          lng = center[1];
-        }
-
-        let colorInfo = alertColors["default"];
-        const descLower = details.toLowerCase();
-
-        if (alertType.includes("general") || alertType.includes("suspicious")) {
-          colorInfo = alertColors["general"];
-        } else if (alertType.includes("red wave") || alertType.includes("flood")) {
-          colorInfo = alertColors["red wave"];
-        } else if (alertType.includes("amber blaze") || alertType.includes("fire") || alertType.includes("smoke")) {
-          colorInfo = alertColors["amber blaze"];
-        } else if (alertType.includes("scam")) {
-          colorInfo = alertColors["scam"];
-        } else if (alertType.includes("electrical")) {
-          colorInfo = alertColors["electrical"];
-        } else if (alertType.includes("water") || alertType.includes("leak")) {
-          colorInfo = alertColors["water"];
-        } else if (alertType.includes("dumping") || alertType.includes("rubbish") || alertType.includes("trash") || alertType.includes("garbage")) {
-          colorInfo = alertColors["dumping"];
-        } else if (alertType.includes("other municipal") || alertType.includes("potholes") || alertType.includes("lights") || alertType.includes("bushes")) {
-          colorInfo = alertColors["other municipal"];
-        } else if (alertType === "other" || alertType === "") {
-          if (descLower.includes("bin") || descLower.includes("overflow") || descLower.includes("rubbish") || descLower.includes("trash") || descLower.includes("garbage") || descLower.includes("dump")) {
-            colorInfo = alertColors["dumping"];
-          }
-        }
-
-        const marker = L.circleMarker([lat, lng], {
-          radius: 10,
-          fillColor: colorInfo.fill,
-          color: colorInfo.border,
-          weight: 2,
-          opacity: 1,
-          fillOpacity: 0.85
-        }).addTo(map);
-
-        marker.bindPopup(`
-          <b>${alertTypeRaw} - ${zone}</b><br>
-          ${spotDesc}<br>
-          ${details.substring(0, 150)}${details.length > 150 ? '...' : ''}<br>
-          Reported: ${timestamp}<br>
-          By: ${reporter}<br>
-          ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
-        `);
-
-        markers.push(marker);
       });
 
-      if (markers.length > 0) {
-        const group = L.featureGroup(markers);
-        map.fitBounds(group.getBounds(), { padding: [50, 50] });
-        console.log('Map zoomed to fit markers');
-      } else {
-        console.log('No markers created');
-      }
-    })
-    .catch(err => {
-      console.error('Error loading Sheet data:', err);
-      document.body.innerHTML += 
-        '<p style="color:red; text-align:center; padding:20px;">Error loading map: ' + err.message + '</p>';
+      // Add new one
+      basemaps[selected].addTo(map);
+
+      // Save preference
+      localStorage.setItem('preferredBasemap', selected);
     });
+
+    // === 7. SHEET ID ===
+    const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
+
+    // === 8. FEED URL ===
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
+
+    // === 9. LOAD EXISTING ALERTS ===
+    fetch(url)
+      .then(response => {
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        return response.text();
+      })
+      .then(text => {
+        let cleaned = text
+          .replace(/^\/\*(.|\n)*?\*\//, '')
+          .trim()
+          .replace(/^google\.visualization\.Query\.setResponse\(/, '')
+          .replace(/\);?$/, '');
+
+        if (cleaned.startsWith('/') || cleaned.startsWith('<') || !cleaned.startsWith('{')) {
+          throw new Error('Cleaned response not valid JSON');
+        }
+
+        const data = JSON.parse(cleaned);
+
+        if (!data || !data.table) {
+          throw new Error('No data.table in response');
+        }
+
+        const rows = data.table.rows || [];
+        console.log(`Loaded ${rows.length} rows from Sheet`);
+
+        const markers = [];
+
+        rows.forEach(row => {
+          const cells = row.c || [];
+
+          const timestamp = cells[0]?.v || '';
+          const reporter   = cells[1]?.v || 'Anonymous';
+          const zone       = cells[3]?.v || 'Unknown';
+          const spotDesc   = cells[4]?.v || '';
+          const combinedCoords = cells[5]?.v || '';
+          const alertTypeRaw = cells[6]?.v || 'Other';
+          const alertType = alertTypeRaw.toLowerCase().trim();
+          const details    = cells[7]?.v || '';
+          const photo      = cells[8]?.v || '';
+
+          let lat = null, lng = null;
+          if (combinedCoords) {
+            const cleanedCoords = combinedCoords.replace(/[^\d\.\-,\s]/g, '').trim();
+            if (cleanedCoords.includes(',')) {
+              const parts = cleanedCoords.split(',').slice(0, 2).map(s => parseFloat(s.trim()));
+              if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                lat = parts[0];
+                lng = parts[1];
+              }
+            }
+          }
+
+          if (lat === null || lng === null) {
+            const center = zoneCenters[zone] || [-30.85, 30.35];
+            lat = center[0];
+            lng = center[1];
+          }
+
+          let colorInfo = alertColors["default"];
+          const descLower = details.toLowerCase();
+
+          if (alertType.includes("general") || alertType.includes("suspicious")) {
+            colorInfo = alertColors["general"];
+          } else if (alertType.includes("red wave") || alertType.includes("flood")) {
+            colorInfo = alertColors["red wave"];
+          } else if (alertType.includes("amber blaze") || alertType.includes("fire") || alertType.includes("smoke")) {
+            colorInfo = alertColors["amber blaze"];
+          } else if (alertType.includes("scam")) {
+            colorInfo = alertColors["scam"];
+          } else if (alertType.includes("electrical")) {
+            colorInfo = alertColors["electrical"];
+          } else if (alertType.includes("water") || alertType.includes("leak")) {
+            colorInfo = alertColors["water"];
+          } else if (alertType.includes("dumping") || alertType.includes("rubbish") || alertType.includes("trash") || alertType.includes("garbage")) {
+            colorInfo = alertColors["dumping"];
+          } else if (alertType.includes("other municipal") || alertType.includes("potholes") || alertType.includes("lights") || alertType.includes("bushes")) {
+            colorInfo = alertColors["other municipal"];
+          } else if (alertType === "other" || alertType === "") {
+            if (descLower.includes("bin") || descLower.includes("overflow") || descLower.includes("rubbish") || descLower.includes("trash") || descLower.includes("garbage") || descLower.includes("dump")) {
+              colorInfo = alertColors["dumping"];
+            }
+          }
+
+          const marker = L.circleMarker([lat, lng], {
+            radius: 10,
+            fillColor: colorInfo.fill,
+            color: colorInfo.border,
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.85
+          }).addTo(map);
+
+          marker.bindPopup(`
+            <b>${alertTypeRaw} - ${zone}</b><br>
+            ${spotDesc}<br>
+            ${details.substring(0, 150)}${details.length > 150 ? '...' : ''}<br>
+            Reported: ${timestamp}<br>
+            By: ${reporter}<br>
+            ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
+          `);
+
+          markers.push(marker);
+        });
+
+        if (markers.length > 0) {
+          const group = L.featureGroup(markers);
+          map.fitBounds(group.getBounds(), { padding: [50, 50] });
+        }
+      })
+      .catch(err => {
+        console.error('Error loading Sheet data:', err);
+        document.body.innerHTML += 
+          '<p style="color:red; text-align:center; padding:20px;">Error loading map: ' + err.message + '</p>';
+      });
 
   // === MAP CLICK → CONFIRMATION → COPY COORDS + TEMPORARY MARKER ===
   map.on('click', function(e) {
@@ -192,7 +281,7 @@
     const lng = e.latlng.lng.toFixed(6);
     const coords = `${lat}, ${lng}`;
 
-    // Step 1: Confirmation popup
+    // Confirmation popup
     const confirmContent = `
       <div style="text-align:center; padding:12px; min-width:260px;">
         <p style="margin:0 0 12px; font-weight:bold;">Report a new alert<br>at this location?</p>
@@ -216,43 +305,43 @@
 
       if (yesBtn) {
         yesBtn.onclick = () => {
-  // Copy to clipboard (already done earlier in the handler)
-  navigator.clipboard.writeText(coords)
-    .then(() => console.log('Coords copied:', coords))
-    .catch(err => console.error('Copy failed:', err));
+          // Copy to clipboard
+          navigator.clipboard.writeText(coords)
+            .then(() => console.log('Coords copied:', coords))
+            .catch(err => console.error('Copy failed:', err));
 
-  // Add temporary marker (already done earlier)
-  const tempMarker = L.circleMarker([lat, lng], {
-    radius: 12,
-    fillColor: '#ff1744',
-    color: '#d50000',
-    weight: 3,
-    opacity: 1,
-    fillOpacity: 0.7
-  }).addTo(map);
+          // Temporary marker (red circle with label)
+          const tempMarker = L.circleMarker([lat, lng], {
+            radius: 12,
+            fillColor: '#ff1744',
+            color: '#d50000',
+            weight: 3,
+            opacity: 1,
+            fillOpacity: 0.7
+          }).addTo(map);
 
-  tempMarker.bindPopup(`
-    <b>New alert location (temporary)</b><br>
-    ${coords}<br>
-    <small>Paste into form – refresh map after submitting</small>
-  `).openPopup();
+          tempMarker.bindPopup(`
+            <b>New alert location (temporary)</b><br>
+            ${coords}<br>
+            <small>Paste into form – refresh map after submitting</small>
+          `).openPopup();
 
-  // Show toast
-  const toast = document.createElement('div');
-  toast.innerHTML = 'Coordinates copied!<br>Paste into Latitude/Longitude field.';
-  toast.style = 'position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#323232ee; color:white; padding:12px 24px; border-radius:8px; z-index:2000; opacity:0; transition:opacity 0.4s; font-size:0.95em; text-align:center;';
-  document.body.appendChild(toast);
-  setTimeout(() => toast.style.opacity = '1', 100);
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    setTimeout(() => toast.remove(), 400);
-  }, 3000);
+          // Show brief toast
+          const toast = document.createElement('div');
+          toast.innerHTML = 'Coordinates copied!<br>Paste into Latitude/Longitude field.';
+          toast.style = 'position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#323232ee; color:white; padding:12px 24px; border-radius:8px; z-index:2000; opacity:0; transition:opacity 0.4s; font-size:0.95em; text-align:center;';
+          document.body.appendChild(toast);
+          setTimeout(() => toast.style.opacity = '1', 100);
+          setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 400);
+          }, 3000);
 
-  // Open form (hard-coded URL – replace with your real viewform URL)
-  window.open("https://docs.google.com/forms/d/e/1FAIpQLSfRG4BSZMwlZtPakPJNaiDoR7XFpZUNDOyXRFOSY8lhfK_GtA/viewform", '_blank');
+          // Open form in new tab
+          window.open("https://docs.google.com/forms/d/e/1FAIpQLSfRG4BSZMwlZtPakPJNaiDoR7XFpZUNDOyXRFOSY8lhfK_GtA/viewform", '_blank');
 
-  map.closePopup(popup);
-};
+          map.closePopup(confirmPopup);
+        };
       }
 
       if (noBtn) {
