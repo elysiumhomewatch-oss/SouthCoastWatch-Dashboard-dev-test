@@ -238,6 +238,115 @@
       }
     }, 100);
   });
+
+    // === Auto-refresh feed every 60 seconds ===
+setInterval(() => {
+  fetch(url + '&t=' + Date.now())  // cache bust for browser
+    .then(r => r.ok ? r.text() : Promise.reject('HTTP error'))
+    .then(text => {
+      let cleaned = text
+        .replace(/^\/\*(.|\n)*?\*\//, '')
+        .trim()
+        .replace(/^google\.visualization\.Query\.setResponse\(/, '')
+        .replace(/\);?$/, '');
+
+      const data = JSON.parse(cleaned);
+      if (data?.table?.rows) {
+        const newRows = data.table.rows;
+        console.log(`Auto-refresh: ${newRows.length} rows detected`);
+
+        // Clear old markers
+        map.eachLayer(layer => {
+          if (layer instanceof L.CircleMarker) map.removeLayer(layer);
+        });
+
+        const newMarkers = [];
+
+        newRows.forEach(row => {
+          // Reuse the same processing logic (copy from your rows.forEach block)
+          const cells = row.c || [];
+          const timestamp = cells[0]?.v || '';
+          const reporter   = cells[1]?.v || 'Anonymous';
+          const zone       = cells[3]?.v || 'Unknown';
+          const spotDesc   = cells[4]?.v || '';
+          const combinedCoords = cells[5]?.v || '';
+          const alertTypeRaw = cells[6]?.v || 'Other';
+          const alertType = alertTypeRaw.toLowerCase().trim();
+          const details    = cells[7]?.v || '';
+          const photo      = cells[8]?.v || '';
+
+          let lat = null, lng = null;
+          if (combinedCoords) {
+            const cleanedCoords = combinedCoords.replace(/[^\d\.\-,\s]/g, '').trim();
+            if (cleanedCoords.includes(',')) {
+              const parts = cleanedCoords.split(',').slice(0, 2).map(s => parseFloat(s.trim()));
+              if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                lat = parts[0];
+                lng = parts[1];
+              }
+            }
+          }
+
+          if (lat === null || lng === null) {
+            const center = zoneCenters[zone] || [-30.85, 30.35];
+            lat = center[0];
+            lng = center[1];
+          }
+
+          let colorInfo = alertColors["default"];
+          const descLower = details.toLowerCase();
+
+          if (alertType.includes("general") || alertType.includes("suspicious")) {
+            colorInfo = alertColors["general"];
+          } else if (alertType.includes("red wave") || alertType.includes("flood")) {
+            colorInfo = alertColors["red wave"];
+          } else if (alertType.includes("amber blaze") || alertType.includes("fire") || alertType.includes("smoke")) {
+            colorInfo = alertColors["amber blaze"];
+          } else if (alertType.includes("scam")) {
+            colorInfo = alertColors["scam"];
+          } else if (alertType.includes("electrical")) {
+            colorInfo = alertColors["electrical"];
+          } else if (alertType.includes("water") || alertType.includes("leak")) {
+            colorInfo = alertColors["water"];
+          } else if (alertType.includes("dumping") || alertType.includes("rubbish") || alertType.includes("trash") || alertType.includes("garbage")) {
+            colorInfo = alertColors["dumping"];
+          } else if (alertType.includes("other municipal") || alertType.includes("potholes") || alertType.includes("lights") || alertType.includes("bushes")) {
+            colorInfo = alertColors["other municipal"];
+          } else if (alertType === "other" || alertType === "") {
+            if (descLower.includes("bin") || descLower.includes("overflow") || descLower.includes("rubbish") || descLower.includes("trash") || descLower.includes("garbage") || descLower.includes("dump")) {
+              colorInfo = alertColors["dumping"];
+            }
+          }
+
+          const marker = L.circleMarker([lat, lng], {
+            radius: 10,
+            fillColor: colorInfo.fill,
+            color: colorInfo.border,
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.85
+          }).addTo(map);
+
+          marker.bindPopup(`
+            <b>${alertTypeRaw} - ${zone}</b><br>
+            ${spotDesc}<br>
+            ${details.substring(0, 150)}${details.length > 150 ? '...' : ''}<br>
+            Reported: ${timestamp}<br>
+            By: ${reporter}<br>
+            ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
+          `);
+
+          newMarkers.push(marker);
+        });
+
+        if (newMarkers.length > 0) {
+          const group = L.featureGroup(newMarkers);
+          map.fitBounds(group.getBounds(), { padding: [50, 50] });
+        }
+      }
+    })
+    .catch(e => console.log('Auto-refresh failed:', e));
+}, 60000); // every 60 seconds
 </script>
 </body>
 </html>
