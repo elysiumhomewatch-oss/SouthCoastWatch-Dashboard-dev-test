@@ -269,14 +269,19 @@
 
   // APPLY FILTERS
   function applyFilters() {
-    markersCluster.clearLayers();
-    allMarkers.forEach(marker => {
-      const type = marker.options.alertType || 'other';
-      if (activeTypes.has(type) || activeTypes.size === 0) {
-        marker.addTo(markersCluster);
-      }
-    });
-  }
+  markersCluster.clearLayers(); // always start clean
+
+  allMarkers.forEach(marker => {
+    const type = marker.options.alertType || 'other';
+
+    // Correct logic:
+    // - If no types selected → show everything
+    // - If some types selected → show only those
+    if (activeTypes.size === 0 || activeTypes.has(type)) {
+      marker.addTo(markersCluster);
+    }
+  });
+}
 
   // LOAD MARKERS
   const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
