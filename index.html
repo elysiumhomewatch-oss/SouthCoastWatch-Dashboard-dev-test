@@ -63,7 +63,17 @@
   // === 5. FEED URL ===
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
 
-  // === 6. LOAD EXISTING ALERTS ===
+  // === 6. YOUR GOOGLE FORM BASE URL (for pre-filling coordinates) ===
+  // Replace with your actual viewform URL (from Send → Link tab in Google Forms)
+  const FORM_BASE_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfRG4BSZMwlZtPakPJNaiDoR7XFpZUNDOyXRFOSY8lhfK_GtA/viewform";
+
+  // === 7. FORM FIELD ID FOR LAT/LNG QUESTION ===
+  // How to find it:
+  // 1. Edit form → click lat/lng question → three-dot menu → Get pre-filled link
+  // 2. Type dummy text in field → Get link → look for entry.XXXXXXXX in the URL
+  const LAT_LNG_FIELD_ID = "entry.YOUR_LAT_LNG_FIELD_ID_HERE"; // e.g. "entry.12345678901234567890"
+
+  // === 8. LOAD EXISTING ALERTS ===
   fetch(url)
     .then(response => {
       if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
@@ -91,7 +101,7 @@
 
       const markers = [];
 
-      rows.forEach((row, index) => {
+      rows.forEach(row => {
         const cells = row.c || [];
 
         const timestamp = cells[0]?.v || '';
@@ -168,7 +178,6 @@
         markers.push(marker);
       });
 
-      // === Auto-zoom using the markers array (no re-mapping rows) ===
       if (markers.length > 0) {
         const group = L.featureGroup(markers);
         map.fitBounds(group.getBounds(), { padding: [50, 50] });
@@ -182,6 +191,49 @@
       document.body.innerHTML += 
         '<p style="color:red; text-align:center; padding:20px;">Error loading map: ' + err.message + '</p>';
     });
+
+  // === MAP CLICK → REPORT NEW ALERT AT CLICKED LOCATION ===
+  map.on('click', function(e) {
+    const lat = e.latlng.lat.toFixed(8);
+    const lng = e.latlng.lng.toFixed(8);
+    const coords = `${lat}, ${lng}`;
+
+    const popupContent = `
+      <div style="text-align:center; padding:10px; min-width:240px;">
+        <p style="margin:0 0 12px; font-weight:bold;">Report a new alert<br>at this location?</p>
+        <button id="yesBtn" style="background:#1976d2; color:white; border:none; padding:10px 20px; margin:0 8px; border-radius:6px; cursor:pointer; font-size:1em;">
+          Yes – use these coordinates
+        </button>
+        <button id="noBtn" style="background:#757575; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-size:1em;">
+          No / Cancel
+        </button>
+      </div>
+    `;
+
+    const popup = L.popup()
+      .setLatLng(e.latlng)
+      .setContent(popupContent)
+      .openOn(map);
+
+    // Attach button listeners after popup is added to DOM
+    setTimeout(() => {
+      const yesBtn = document.getElementById('yesBtn');
+      const noBtn = document.getElementById('noBtn');
+
+      if (yesBtn) {
+        yesBtn.onclick = () => {
+          // === PRE-FILL COORDINATES IN FORM ===
+          const prefillUrl = `${FORM_BASE_URL}?${LAT_LNG_FIELD_ID}=${encodeURIComponent(coords)}`;
+          window.open(prefillUrl, '_blank');
+          map.closePopup(popup);
+        };
+      }
+
+      if (noBtn) {
+        noBtn.onclick = () => map.closePopup(popup);
+      }
+    }, 100);
+  });
 </script>
 </body>
 </html>
