@@ -307,15 +307,15 @@
       rows.forEach(row => {
   const c = row.c || [];
 
-  const timestamp     = c[0]?.v || '';
-  const reporter      = c[1]?.v || 'Anonymous';
-  const zone          = c[3]?.v || 'Unknown';
-  const spotDesc      = c[4]?.v || '';
+  const timestamp = c[0]?.v || '';
+  const reporter = c[1]?.v || 'Anonymous';
+  const zone = c[3]?.v || 'Unknown';
+  const spotDesc = c[4]?.v || '';
   const combinedCoords = c[5]?.v || '';
-  const alertTypeRaw  = c[6]?.v || 'Other';
-  const alertType     = alertTypeRaw.toLowerCase().trim();
-  const details       = c[7]?.v || '';
-  const photo         = c[8]?.v || '';
+  const alertTypeRaw = c[6]?.v || 'Other';
+  const alertType = alertTypeRaw.toLowerCase().trim();
+  const details = c[7]?.v || '';
+  const photo = c[8]?.v || '';
 
   let lat = null, lng = null;
   if (combinedCoords && combinedCoords.includes(',')) {
@@ -355,8 +355,7 @@
     color: colorInfo.border,
     weight: 2,
     opacity: 1,
-    fillOpacity: 0.85,
-    alertType: alertType || 'other'   // ← FIXED: store here
+    fillOpacity: 0.85
   });
 
   marker.addTo(markersCluster);
@@ -369,6 +368,10 @@
     By: ${reporter}<br>
     ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
   `);
+
+  // Debug log – shows exactly what is stored
+  marker.options.alertType = alertType || 'other';
+  console.log(`Row alertTypeRaw: "${alertTypeRaw}" → processed as "${alertType}" → stored as "${marker.options.alertType}"`);
 
   allMarkers.push(marker);
 });
