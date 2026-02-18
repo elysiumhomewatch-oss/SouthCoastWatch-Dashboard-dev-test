@@ -18,7 +18,11 @@
 </head>
 <body>
   <h1>🌊 SouthCoastWatch Community Dashboard</h1>
-
+ <div style="text-align:center; margin: 20px 0;">
+  <button onclick="location.reload()" style="padding:12px 24px; font-size:1.1em; background:#1976d2; color:white; border:none; border-radius:8px; cursor:pointer;">
+    Refresh Map (check for new alerts)
+  </button>
+</div>
   <!-- Map takes center stage – no permanent form at top anymore -->
   <div id="map"></div>
 
@@ -61,7 +65,7 @@
   const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
 
   // === 5. FEED URL ===
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201&cachebust=${Date.now()}`;
 
   // === 6. YOUR GOOGLE FORM BASE URL (for pre-filling coordinates) ===
   // Replace with your actual viewform URL (from Send → Link tab in Google Forms)
