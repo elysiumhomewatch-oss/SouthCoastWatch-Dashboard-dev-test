@@ -67,7 +67,7 @@
   // === 5. FEED URL ===
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
 
-  // === 6. LOAD EXISTING ALERTS (one-time on page load) ===
+  // === 6. LOAD EXISTING ALERTS ===
   fetch(url)
     .then(response => {
       if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
@@ -186,13 +186,13 @@
         '<p style="color:red; text-align:center; padding:20px;">Error loading map: ' + err.message + '</p>';
     });
 
-  // === MAP CLICK → CONFIRM → COPY COORDS + TEMPORARY MARKER ===
+  // === MAP CLICK → CONFIRMATION → COPY COORDS + TEMPORARY MARKER ===
   map.on('click', function(e) {
     const lat = e.latlng.lat.toFixed(6);
     const lng = e.latlng.lng.toFixed(6);
     const coords = `${lat}, ${lng}`;
 
-    // Step 1: Simple confirmation popup
+    // Step 1: Confirmation popup
     const confirmContent = `
       <div style="text-align:center; padding:12px; min-width:260px;">
         <p style="margin:0 0 12px; font-weight:bold;">Report a new alert<br>at this location?</p>
@@ -216,7 +216,7 @@
 
       if (yesBtn) {
         yesBtn.onclick = () => {
-          // User confirmed → copy to clipboard
+          // Confirmed → copy to clipboard
           navigator.clipboard.writeText(coords)
             .then(() => console.log('Coords copied:', coords))
             .catch(err => console.error('Copy failed:', err));
@@ -237,9 +237,7 @@
             <small>Paste into form – refresh map after submitting</small>
           `).openPopup();
 
-          // Temp marker stays until manual refresh (no auto-remove)
-          // If you want auto-remove later, add:
-          // setTimeout(() => map.removeLayer(tempMarker), 30000);
+          // Marker stays until manual refresh (no timed removal)
 
           // Show brief toast confirmation
           const toast = document.createElement('div');
