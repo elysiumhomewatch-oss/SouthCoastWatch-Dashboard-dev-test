@@ -38,107 +38,132 @@
 
   <!-- Your script block (updated to remove alert cards) -->
   <script>
-    // === Zone fallback centers ===
-    const zoneCenters = {
-      "Highway West": [-30.464248, 30.637618],
-      "Sea East": [-30.90, 30.45],
-      "River North": [-30.82, 30.38],
-      "River South": [-30.88, 30.32],
-      "Central": [-30.85, 30.35],
-      "Unknown": [-30.85, 30.35]
-    };
+  // === Zone fallback centers ===
+  const zoneCenters = {
+    "Highway West": [-30.464248, 30.637618],
+    "Sea East": [-30.90, 30.45],
+    "River North": [-30.82, 30.38],
+    "River South": [-30.88, 30.32],
+    "Central": [-30.85, 30.35],
+    "Unknown": [-30.85, 30.35]
+  };
 
-    // === Initialize map ===
-    const map = L.map('map').setView([-30.85, 30.35], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+  // === Color map by alert type ===
+  const alertColors = {
+    "General / Suspicious activity": "#d32f2f",          // Red
+    "Red Wave – Flood or rising water": "#1976d2",       // Blue
+    "Amber Blaze – Smoke/fire/veld hazard": "#f57c00",   // Orange
+    "Scam or doorstep concern": "#7b1fa2",               // Purple
+    "Electrical fault": "#fbc02d",                       // Yellow
+    "Water supply leak / interruption": "#42a5f5",       // Light Blue
+    "Illegal dumping": "#795548",                        // Brown
+    "Other municipal / safety issue": "#757575",         // Gray
+    "Other": "#424242"                                   // Dark Gray (fallback)
+  };
 
-    // === Sheet ID ===
-    const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
+  // === Initialize map ===
+  const map = L.map('map').setView([-30.85, 30.35], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
 
-    // === Feed URL (full tab, no query to avoid errors) ===
-    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
+  // === Sheet ID ===
+  const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
 
-    fetch(url)
-      .then(response => {
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-        return response.text();
-      })
-      .then(text => {
-        let cleaned = text
-          .replace(/^\/\*(.|\n)*?\*\//, '')
-          .trim()
-          .replace(/^google\.visualization\.Query\.setResponse\(/, '')
-          .replace(/\);?$/, '');
+  // === Feed URL ===
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
 
-        if (cleaned.startsWith('/') || cleaned.startsWith('<') || !cleaned.startsWith('{')) {
-          throw new Error('Cleaned response not valid JSON: ' + cleaned.substring(0, 100));
-        }
+  fetch(url)
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+      return response.text();
+    })
+    .then(text => {
+      let cleaned = text
+        .replace(/^\/\*(.|\n)*?\*\//, '')
+        .trim()
+        .replace(/^google\.visualization\.Query\.setResponse\(/, '')
+        .replace(/\);?$/, '');
 
-        const data = JSON.parse(cleaned);
+      if (cleaned.startsWith('/') || cleaned.startsWith('<') || !cleaned.startsWith('{')) {
+        throw new Error('Cleaned response not valid JSON');
+      }
 
-        if (!data || !data.table) {
-          throw new Error('No data.table in response');
-        }
+      const data = JSON.parse(cleaned);
 
-        const rows = data.table.rows || [];
-        console.log(`Loaded ${rows.length} rows`);
+      if (!data || !data.table) {
+        throw new Error('No data.table in response');
+      }
 
-        const markers = [];
+      const rows = data.table.rows || [];
 
-        rows.forEach((row, index) => {
-          const cells = row.c || [];
+      const markers = [];
 
-          const timestamp = cells[0]?.v || '';
-          const reporter   = cells[1]?.v || 'Anonymous';
-          const zone       = cells[3]?.v || 'Unknown';
-          const spotDesc   = cells[4]?.v || '';
-          const combinedCoords = cells[5]?.v || '';
-          const alertType  = cells[6]?.v || '';
-          const details    = cells[7]?.v || '';
-          const photo      = cells[8]?.v || '';
+      rows.forEach(row => {
+        const cells = row.c || [];
 
-          let lat = null, lng = null;
-          if (combinedCoords) {
-            const cleanedCoords = combinedCoords.replace(/[^\d\.\-,\s]/g, '').trim();
-            if (cleanedCoords.includes(',')) {
-              const parts = cleanedCoords.split(',').slice(0, 2).map(s => parseFloat(s.trim()));
-              if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-                lat = parts[0];
-                lng = parts[1];
-              }
+        const timestamp = cells[0]?.v || '';
+        const reporter   = cells[1]?.v || 'Anonymous';
+        const zone       = cells[3]?.v || 'Unknown';
+        const spotDesc   = cells[4]?.v || '';
+        const combinedCoords = cells[5]?.v || '';
+        const alertType  = cells[6]?.v || 'Other';
+        const details    = cells[7]?.v || '';
+        const photo      = cells[8]?.v || '';
+
+        let lat = null, lng = null;
+        if (combinedCoords) {
+          const cleanedCoords = combinedCoords.replace(/[^\d\.\-,\s]/g, '').trim();
+          if (cleanedCoords.includes(',')) {
+            const parts = cleanedCoords.split(',').slice(0, 2).map(s => parseFloat(s.trim()));
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+              lat = parts[0];
+              lng = parts[1];
             }
           }
-
-          if (lat === null || lng === null) {
-            const center = zoneCenters[zone] || [-30.85, 30.35];
-            lat = center[0];
-            lng = center[1];
-          }
-
-          const marker = L.marker([lat, lng]).addTo(map);
-          marker.bindPopup(`
-            <b>${alertType} - ${zone}</b><br>
-            ${spotDesc}<br>
-            ${details.substring(0, 150)}${details.length > 150 ? '...' : ''}<br>
-            Reported: ${timestamp}<br>
-            By: ${reporter}<br>
-            ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
-          `);
-          markers.push(marker);
-        });
-
-        if (markers.length > 0) {
-          const group = L.featureGroup(markers);
-          map.fitBounds(group.getBounds(), { padding: [50, 50] });
         }
-      })
-      .catch(err => {
-        console.error('Error:', err);
-        document.body.innerHTML += 
-          '<p style="color:red; text-align:center; padding:20px;">Error loading map data: ' + err.message + '</p>';
+
+        if (lat === null || lng === null) {
+          const center = zoneCenters[zone] || [-30.85, 30.35];
+          lat = center[0];
+          lng = center[1];
+        }
+
+        // === Choose color based on alert type ===
+        const color = alertColors[alertType] || alertColors["Other"];
+
+        // === Create colored circle marker ===
+        const marker = L.circleMarker([lat, lng], {
+          radius: 8,
+          fillColor: color,
+          color: color,
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.8
+        }).addTo(map);
+
+        marker.bindPopup(`
+          <b>${alertType} - ${zone}</b><br>
+          ${spotDesc}<br>
+          ${details.substring(0, 150)}${details.length > 150 ? '...' : ''}<br>
+          Reported: ${timestamp}<br>
+          By: ${reporter}<br>
+          ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
+        `);
+
+        markers.push(marker);
       });
+
+      if (markers.length > 0) {
+        const group = L.featureGroup(markers);
+        map.fitBounds(group.getBounds(), { padding: [50, 50] });
+      }
+    })
+    .catch(err => {
+      console.error('Error:', err);
+      document.body.innerHTML += 
+        '<p style="color:red; text-align:center; padding:20px;">Error loading map: ' + err.message + '</p>';
+    });
 </script>
 </body>
 </html>
