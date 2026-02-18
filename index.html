@@ -269,15 +269,30 @@
 
   // APPLY FILTERS
   function applyFilters() {
-  markersCluster.clearLayers(); // always start clean
+  markersCluster.clearLayers();
 
   allMarkers.forEach(marker => {
-    const type = marker.options.alertType || 'other';
+    let type = (marker.options.alertType || 'other').toLowerCase().trim();
 
-    // Correct logic:
-    // - If no types selected → show everything
-    // - If some types selected → show only those
-    if (activeTypes.size === 0 || activeTypes.has(type)) {
+    // Normalize for matching (remove parentheses and extra words)
+    type = type.replace(/\s*\(.*?\)\s*/g, '').trim();  // remove (anything)
+
+    const shouldShow = activeTypes.size === 0 ||  // show all if no filters
+      [...activeTypes].some(active => {
+        const cleanActive = active.toLowerCase().trim();
+        return type.includes(cleanActive) || cleanActive.includes(type) ||
+               (cleanActive === 'dumping' && type.includes('bin') || type.includes('overflow') || type.includes('rubbish')) ||
+               (cleanActive === 'other municipal' && type.includes('pothole') || type.includes('light') || type.includes('bush')) ||
+               (cleanActive === 'electrical' && type.includes('fault')) ||
+               (cleanActive === 'water' && type.includes('leak') || type.includes('interruption')) ||
+               (cleanActive === 'amber blaze' && type.includes('fire') || type.includes('hazard')) ||
+               (cleanActive === 'red wave' && type.includes('flood')) ||
+               (cleanActive === 'scam' && type.includes('doorstep')) ||
+               (cleanActive === 'general' && type.includes('suspicious')) ||
+               (cleanActive === 'other' && type === 'other');
+      });
+
+    if (shouldShow) {
       marker.addTo(markersCluster);
     }
   });
