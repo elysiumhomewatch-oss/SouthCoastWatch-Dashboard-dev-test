@@ -305,74 +305,73 @@
       allMarkers = [];
 
       rows.forEach(row => {
-        const c = row.c || [];
+  const c = row.c || [];
 
-        const timestamp     = c[0]?.v || '';
-        const reporter      = c[1]?.v || 'Anonymous';
-        const zone          = c[3]?.v || 'Unknown';
-        const spotDesc      = c[4]?.v || '';
-        const combinedCoords = c[5]?.v || '';
-        const alertTypeRaw  = c[6]?.v || 'Other';
-        const alertType     = alertTypeRaw.toLowerCase().trim();
-        const details       = c[7]?.v || '';
-        const photo         = c[8]?.v || '';
+  const timestamp     = c[0]?.v || '';
+  const reporter      = c[1]?.v || 'Anonymous';
+  const zone          = c[3]?.v || 'Unknown';
+  const spotDesc      = c[4]?.v || '';
+  const combinedCoords = c[5]?.v || '';
+  const alertTypeRaw  = c[6]?.v || 'Other';
+  const alertType     = alertTypeRaw.toLowerCase().trim();
+  const details       = c[7]?.v || '';
+  const photo         = c[8]?.v || '';
 
-        let lat = null, lng = null;
-        if (combinedCoords && combinedCoords.includes(',')) {
-          const parts = combinedCoords.split(',').map(s => parseFloat(s.trim()));
-          if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-            lat = parts[0];
-            lng = parts[1];
-          }
-        }
+  let lat = null, lng = null;
+  if (combinedCoords && combinedCoords.includes(',')) {
+    const parts = combinedCoords.split(',').map(s => parseFloat(s.trim()));
+    if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      lat = parts[0];
+      lng = parts[1];
+    }
+  }
 
-        if (!lat || !lng) {
-          const center = zoneCenters[zone] || [-30.85, 30.35];
-          lat = center[0];
-          lng = center[1];
-        }
+  if (!lat || !lng) {
+    const center = zoneCenters[zone] || [-30.85, 30.35];
+    lat = center[0];
+    lng = center[1];
+  }
 
-        let colorInfo = alertColors["default"];
-        const descLower = details.toLowerCase();
+  let colorInfo = alertColors["default"];
+  const descLower = details.toLowerCase();
 
-        if      (alertType.includes("general")     || alertType.includes("suspicious"))   colorInfo = alertColors["general"];
-        else if (alertType.includes("red wave")    || alertType.includes("flood"))        colorInfo = alertColors["red wave"];
-        else if (alertType.includes("amber blaze") || alertType.includes("fire") || alertType.includes("smoke")) colorInfo = alertColors["amber blaze"];
-        else if (alertType.includes("scam"))                                              colorInfo = alertColors["scam"];
-        else if (alertType.includes("electrical"))                                        colorInfo = alertColors["electrical"];
-        else if (alertType.includes("water")       || alertType.includes("leak"))         colorInfo = alertColors["water"];
-        else if (alertType.includes("dumping")     || alertType.includes("rubbish") || alertType.includes("trash") || alertType.includes("garbage")) colorInfo = alertColors["dumping"];
-        else if (alertType.includes("other municipal") || alertType.includes("potholes") || alertType.includes("lights") || alertType.includes("bushes")) colorInfo = alertColors["other municipal"];
-        else if (alertType === "other" || alertType === "") {
-          if (descLower.includes("bin") || descLower.includes("overflow") || descLower.includes("rubbish") || descLower.includes("trash") || descLower.includes("garbage") || descLower.includes("dump")) {
-            colorInfo = alertColors["dumping"];
-          }
-        }
+  if      (alertType.includes("general")     || alertType.includes("suspicious"))   colorInfo = alertColors["general"];
+  else if (alertType.includes("red wave")    || alertType.includes("flood"))        colorInfo = alertColors["red wave"];
+  else if (alertType.includes("amber blaze") || alertType.includes("fire") || alertType.includes("smoke")) colorInfo = alertColors["amber blaze"];
+  else if (alertType.includes("scam"))                                              colorInfo = alertColors["scam"];
+  else if (alertType.includes("electrical"))                                        colorInfo = alertColors["electrical"];
+  else if (alertType.includes("water")       || alertType.includes("leak"))         colorInfo = alertColors["water"];
+  else if (alertType.includes("dumping")     || alertType.includes("rubbish") || alertType.includes("trash") || alertType.includes("garbage")) colorInfo = alertColors["dumping"];
+  else if (alertType.includes("other municipal") || alertType.includes("potholes") || alertType.includes("lights") || alertType.includes("bushes")) colorInfo = alertColors["other municipal"];
+  else if (alertType === "other" || alertType === "") {
+    if (descLower.includes("bin") || descLower.includes("overflow") || descLower.includes("rubbish") || descLower.includes("trash") || descLower.includes("garbage") || descLower.includes("dump")) {
+      colorInfo = alertColors["dumping"];
+    }
+  }
 
-        const marker = L.circleMarker([lat, lng], {
-          radius: 10,
-          fillColor: colorInfo.fill,
-          color: colorInfo.border,
-          weight: 2,
-          opacity: 1,
-          fillOpacity: 0.85
-        });
-    console.log(`Row alertTypeRaw: "${alertTypeRaw}" → processed as "${alertType}" → stored as "${marker.options.alertType}"`);
-        marker.addTo(markersCluster);
+  const marker = L.circleMarker([lat, lng], {
+    radius: 10,
+    fillColor: colorInfo.fill,
+    color: colorInfo.border,
+    weight: 2,
+    opacity: 1,
+    fillOpacity: 0.85,
+    alertType: alertType || 'other'   // ← FIXED: store here
+  });
 
-        marker.bindPopup(`
-          <b>${alertTypeRaw} - ${zone}</b><br>
-          ${spotDesc}<br>
-          ${details.substring(0, 150)}${details.length > 150 ? '...' : ''}<br>
-          Reported: ${timestamp}<br>
-          By: ${reporter}<br>
-          ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
-        `);
+  marker.addTo(markersCluster);
 
-        marker.options.alertType = alertType || 'other';
+  marker.bindPopup(`
+    <b>${alertTypeRaw} - ${zone}</b><br>
+    ${spotDesc}<br>
+    ${details.substring(0, 150)}${details.length > 150 ? '...' : ''}<br>
+    Reported: ${timestamp}<br>
+    By: ${reporter}<br>
+    ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
+  `);
 
-        allMarkers.push(marker);
-      });
+  allMarkers.push(marker);
+});
 
       applyFilters();
 
