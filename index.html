@@ -223,7 +223,7 @@
           <button id="admin-submit" style="padding:10px 20px; background:#1976d2; color:white; border:none; border-radius:6px; cursor:pointer;">Login</button>
         </div>
         <div style="margin-top:16px; text-align:center; font-size:0.85em; color:#555;">
-          <a href="#" id="admin-logout-link" style="color:#d32f2f; text-decoration:none; ${isAdmin ? '' : 'display:none;'}">Logout</a>
+          <a href="#" id="admin-logout-link" style="color:#d32f2f; text-decoration:none; display:none;">Logout</a>
         </div>
       </div>
     `;
@@ -344,9 +344,10 @@
       applyFilters();
     });
     // ────────────────────────────────────────────────
-    // APPLY FILTERS
+    // APPLY FILTERS (with extra safety)
     // ────────────────────────────────────────────────
     function applyFilters() {
+      console.log('applyFilters called | timeFilterDays:', timeFilterDays);
       markersCluster.clearLayers();
       allMarkers.forEach(marker => {
         const type = (marker.options.alertType || 'other').toLowerCase().trim();
@@ -355,9 +356,12 @@
         let timeMatch = true;
         if (timeFilterDays !== Infinity && timestamp) {
           const alertTimeMs = parseGoogleDateToMs(timestamp);
+          console.log('Parsing timestamp:', timestamp, '→ ms:', alertTimeMs);
           if (alertTimeMs) {
             const daysOld = (Date.now() - alertTimeMs) / (1000 * 60 * 60 * 24);
             timeMatch = daysOld <= timeFilterDays;
+          } else {
+            console.warn('Failed to parse timestamp:', timestamp);
           }
         }
         if (typeMatch && timeMatch) {
@@ -467,7 +471,8 @@
           marker.options.alertType = finalType;
           allMarkers.push(marker);
         });
-        applyFilters();
+        // Delay initial filter to ensure markers are ready
+        setTimeout(applyFilters, 100);
         setTimeout(() => {
           const bounds = markersCluster.getBounds();
           if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
