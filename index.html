@@ -203,7 +203,7 @@
   });
 
   // ────────────────────────────────────────────────
-  // TIME SLIDER – more concise
+  // TIME SLIDER – concise version
   // ────────────────────────────────────────────────
   const timeSlider = document.createElement('input');
   timeSlider.type = 'range';
@@ -251,17 +251,28 @@
     });
   }
 
-  // Parse Google Sheets timestamp
+  // ────────────────────────────────────────────────
+  // Parse Google Sheets timestamp – fixed for 0-based month + SA format
+  // ────────────────────────────────────────────────
   function parseGoogleDate(str) {
     if (!str || !str.startsWith('Date(')) return null;
     const match = str.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
     if (!match) return null;
-    const [, y, m, d, h, min, s] = match;
-    return new Date(y, m, d, h, min, s).getTime();
+    const [, year, month, day, hour, min, sec] = match.map(Number);
+    // Month is 0-based in Google → add 1 for JS Date
+    const date = new Date(year, month, day, hour, min, sec);
+    // Return in South African format: dd/mm/yyyy hh:mm:ss (24-hour)
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0'); // month +1
+    const yyyy = date.getFullYear();
+    const hh = String(date.getHours()).padStart(2, '0');
+    const minStr = String(date.getMinutes()).padStart(2, '0');
+    const ss = String(date.getSeconds()).padStart(2, '0');
+    return `${dd}/${mm}/${yyyy} ${hh}:${minStr}:${ss}`;
   }
 
   // ────────────────────────────────────────────────
-  // LOAD MARKERS – store timestamp
+  // LOAD MARKERS – store timestamp + use fixed parser
   // ────────────────────────────────────────────────
   const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
@@ -345,7 +356,7 @@
           <b>${alertTypeRaw} - ${zone}</b><br>
           ${spotDesc}<br>
           ${details.substring(0, 150)}${details.length > 150 ? '...' : ''}<br>
-          Reported: ${timestamp}<br>
+          Reported: ${parseGoogleDate(timestamp) || timestamp || 'Unknown'}<br>
           By: ${reporter}<br>
           ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
         `);
@@ -353,7 +364,7 @@
         marker.options.alertType = finalType;
         marker.options.timestamp = timestamp;
 
-        // Track oldest timestamp
+        // Track oldest timestamp for slider range
         const alertTime = parseGoogleDate(timestamp);
         if (alertTime && alertTime < oldestDate) {
           oldestDate = alertTime;
@@ -374,7 +385,7 @@
         timeSlider.value = timeFilterDays;
       }
 
-      // Update label
+      // Update label concisely
       const updateLabel = () => {
         const val = Number(timeSlider.value);
         timeLabel.textContent = val === daysSinceOldest ? 'All' : `${val}d`;
@@ -384,7 +395,7 @@
       };
 
       timeSlider.addEventListener('input', updateLabel);
-      updateLabel(); // initial call
+      updateLabel(); // initial
 
       applyFilters();
 
@@ -401,15 +412,6 @@
       console.error('Error loading Sheet:', err);
       document.body.innerHTML += `<p style="color:red; text-align:center; padding:20px;">Error loading map: ${err.message}</p>`;
     });
-
-  // Parse Google Sheets timestamp
-  function parseGoogleDate(str) {
-    if (!str || !str.startsWith('Date(')) return null;
-    const match = str.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
-    if (!match) return null;
-    const [, y, m, d, h, min, s] = match;
-    return new Date(y, m, d, h, min, s).getTime();
-  }
 
   // ────────────────────────────────────────────────
   // MAP CLICK → CONFIRM → COPY + TEMP MARKER
