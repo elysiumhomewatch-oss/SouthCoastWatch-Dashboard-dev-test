@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>SouthCoastWatch Community Dashboard</title>
+  <title>SouthCoastWatch Community Dashboard </title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
  
@@ -29,7 +29,6 @@
     .time-radio-group label { cursor: pointer; font-size: 0.95em; }
     #reset-filters { display: block; margin: 16px auto 0; padding: 10px 20px; background: #757575; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1em; }
     #reset-filters:hover { background: #616161; }
-    #admin-login-btn { margin-left: 12px; padding: 8px 14px; background: #d81b60; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.95em; }
     @media (max-width: 600px) {
       #type-filters { grid-template-columns: 1fr; }
       .time-radio-group { align-items: flex-start; }
@@ -52,18 +51,21 @@
       <div id="type-filters" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px;">
         <!-- Checkboxes generated here -->
       </div>
+      <!-- Time radio buttons -->
       <div class="time-radio-group">
         <label><input type="radio" name="timeFilter" value="all" checked> All time</label>
         <label><input type="radio" name="timeFilter" value="7"> Last 7 days</label>
         <label><input type="radio" name="timeFilter" value="3"> Last 3 days</label>
         <label><input type="radio" name="timeFilter" value="1"> Last 24 hours</label>
       </div>
+      <!-- New: Show only active/unresolved -->
       <div style="margin-top: 16px; text-align: center;">
         <label style="cursor: pointer; font-size: 0.95em;">
           <input type="checkbox" id="active-only" checked>
           Show only active / unresolved alerts
         </label>
       </div>
+      <!-- Reset button -->
       <button id="reset-filters">Reset All Filters</button>
     </div>
   </details>
@@ -148,20 +150,24 @@
       zoomToBoundsOnClick: true,
       animate: true,
       iconCreateFunction: function(cluster) {
+        // Simple cluster color based on most common type inside
         const childMarkers = cluster.getAllChildMarkers();
         const typeCounts = {};
         childMarkers.forEach(m => {
           const t = m.options.alertType || 'other';
           typeCounts[t] = (typeCounts[t] || 0) + 1;
         });
-        let dominant = 'other';
-        let max = 0;
+        let dominantType = 'other';
+        let maxCount = 0;
         for (const t in typeCounts) {
-          if (typeCounts[t] > max) { max = typeCounts[t]; dominant = t; }
+          if (typeCounts[t] > maxCount) {
+            maxCount = typeCounts[t];
+            dominantType = t;
+          }
         }
-        const color = alertColors[dominant]?.fill || '#424242';
+        const color = alertColors[dominantType]?.fill || '#424242';
         return L.divIcon({
-          html: `<div style="background:${color};color:white;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;border:3px solid #fff;">${cluster.getChildCount()}</div>`,
+          html: `<div style="background-color:${color};color:white;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;border:3px solid #fff;">${cluster.getChildCount()}</div>`,
           className: 'custom-cluster',
           iconSize: [40, 40]
         });
@@ -193,85 +199,6 @@
     let activeTypes = new Set(alertTypesConfig.map(t => t.key));
     let timeFilterDays = Infinity;
     let showActiveOnly = true;
-    // ────────────────────────────────────────────────
-    // ADMIN LOGIN STATE & UI (single button, no duplicates)
-    // ────────────────────────────────────────────────
-    let isAdmin = false;
-    const adminAuth = JSON.parse(localStorage.getItem('adminAuth') || 'null');
-    if (adminAuth && adminAuth.email && adminAuth.token) {
-      isAdmin = true;
-    }
-    // Create ONE button
-    const adminBtn = document.createElement('button');
-    adminBtn.id = 'admin-login-btn';
-    adminBtn.textContent = isAdmin ? 'Admin Panel' : 'Admin Login';
-    adminBtn.style = 'margin-left: 12px; padding: 8px 14px; background: #d81b60; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.95em;';
-    // Append it ONCE
-    document.getElementById('map-type-selector').appendChild(adminBtn);
-    // Login modal
-    const loginModal = document.createElement('div');
-    loginModal.id = 'admin-login-modal';
-    loginModal.style = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center;';
-    loginModal.innerHTML = `
-      <div style="background:white; padding:30px; border-radius:12px; width:360px; max-width:90%; box-shadow:0 10px 30px rgba(0,0,0,0.4);">
-        <h2 style="margin-top:0; color:#1a3c6d;">Admin Login</h2>
-        <p style="color:#555; margin-bottom:20px;">Enter your email and 64-character UUID token</p>
-        <input type="email" id="admin-email" placeholder="Email address" style="width:100%; padding:10px; margin-bottom:12px; border:1px solid #ccc; border-radius:6px;">
-        <input type="text" id="admin-token" placeholder="64-char UUID token" style="width:100%; padding:10px; margin-bottom:20px; border:1px solid #ccc; border-radius:6px;">
-        <div style="display:flex; gap:12px; justify-content:flex-end;">
-          <button id="admin-cancel" style="padding:10px 20px; background:#757575; color:white; border:none; border-radius:6px; cursor:pointer;">Cancel</button>
-          <button id="admin-submit" style="padding:10px 20px; background:#1976d2; color:white; border:none; border-radius:6px; cursor:pointer;">Login</button>
-        </div>
-        <div style="margin-top:16px; text-align:center; font-size:0.85em; color:#555;">
-          <a href="#" id="admin-logout-link" style="color:#d32f2f; text-decoration:none; display:none;">Logout</a>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(loginModal);
-    // Update logout visibility after modal is appended
-    const logoutLink = document.getElementById('admin-logout-link');
-    if (isAdmin) logoutLink.style.display = 'inline';
-    // Show modal or admin panel
-    adminBtn.addEventListener('click', () => {
-      if (isAdmin) {
-        alert('Admin Panel access coming soon — redirect would go here.');
-        // Later: window.open('admin.html', '_blank');
-      } else {
-        loginModal.style.display = 'flex';
-      }
-    });
-    // Cancel
-    document.getElementById('admin-cancel').addEventListener('click', () => {
-      loginModal.style.display = 'none';
-    });
-    // Submit login
-    document.getElementById('admin-submit').addEventListener('click', () => {
-      const email = document.getElementById('admin-email').value.trim();
-      const token = document.getElementById('admin-token').value.trim();
-      if (!email || !token) {
-        alert('Please enter both email and token');
-        return;
-      }
-      if (token.length < 32) {
-        alert('Token should be a valid UUID (at least 32 characters)');
-        return;
-      }
-      localStorage.setItem('adminAuth', JSON.stringify({ email, token }));
-      isAdmin = true;
-      adminBtn.textContent = 'Admin Panel';
-      logoutLink.style.display = 'inline';
-      loginModal.style.display = 'none';
-      alert('Admin mode activated!');
-      location.reload();
-    });
-    // Logout
-    logoutLink.addEventListener('click', e => {
-      e.preventDefault();
-      if (confirm('Logout from admin mode?')) {
-        localStorage.removeItem('adminAuth');
-        location.reload();
-      }
-    });
     // ────────────────────────────────────────────────
     // CREATE TYPE CHECKBOXES
     // ────────────────────────────────────────────────
@@ -318,33 +245,38 @@
       if (saved === 'all' && this.value === 'all') this.checked = true;
       else if (Number(saved) === Number(this.value)) this.checked = true;
     });
+    // Active only checkbox
     const activeOnlyCheckbox = document.getElementById('active-only');
     activeOnlyCheckbox.addEventListener('change', function() {
       showActiveOnly = this.checked;
-      localStorage.setItem('showActiveOnly', showActiveOnly);
       applyFilters();
     });
+    // Restore saved state
     const savedActive = localStorage.getItem('showActiveOnly');
     if (savedActive !== null) {
       showActiveOnly = savedActive === 'true';
       activeOnlyCheckbox.checked = showActiveOnly;
     }
+    // Reset button
     document.getElementById('reset-filters').addEventListener('click', function() {
+      // Reset type checkboxes
       document.querySelectorAll('.type-checkbox').forEach(cb => {
         cb.checked = true;
         activeTypes.add(cb.value);
       });
       localStorage.setItem('alertTypeFilters', JSON.stringify([...activeTypes]));
+      // Reset time to all
       document.querySelector('input[name="timeFilter"][value="all"]').checked = true;
       timeFilterDays = Infinity;
       localStorage.setItem('timeFilterDays', 'all');
+      // Reset active only
       activeOnlyCheckbox.checked = true;
       showActiveOnly = true;
       localStorage.setItem('showActiveOnly', 'true');
       applyFilters();
     });
     // ────────────────────────────────────────────────
-    // APPLY FILTERS
+    // APPLY FILTERS (type + time + active only)
     // ────────────────────────────────────────────────
     function applyFilters() {
       markersCluster.clearLayers();
