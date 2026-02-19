@@ -215,23 +215,22 @@
     let showActiveOnly = true;
 
     // ────────────────────────────────────────────────
-    // ADMIN LOGIN STATE & UI
-    // ────────────────────────────────────────────────
-    let isAdmin = false;
-    const adminAuth = JSON.parse(localStorage.getItem('adminAuth') || 'null');
-    if (adminAuth && adminAuth.email && adminAuth.token) {
-      isAdmin = true;
-    }
+// ADMIN LOGIN STATE & UI (single button, no duplicates)
+// ────────────────────────────────────────────────
+let isAdmin = false;
+const adminAuth = JSON.parse(localStorage.getItem('adminAuth') || 'null');
+if (adminAuth && adminAuth.email && adminAuth.token) {
+  isAdmin = true;
+}
 
-    // Admin button container
-    const adminBtnContainer = document.createElement('div');
-    adminBtnContainer.style = 'display: inline-block; margin-left: 12px;';
-    const adminBtn = document.createElement('button');
-    adminBtn.id = 'admin-login-btn';
-    adminBtn.textContent = isAdmin ? 'Admin Panel' : 'Admin Login';
-    adminBtn.style = 'padding: 8px 14px; background: #d81b60; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.95em;';
-    adminBtnContainer.appendChild(adminBtn);
-    document.getElementById('map-type-selector').appendChild(adminBtnContainer);
+// Create ONE button
+const adminBtn = document.createElement('button');
+adminBtn.id = 'admin-login-btn';
+adminBtn.textContent = isAdmin ? 'Admin Panel' : 'Admin Login';
+adminBtn.style = 'margin-left: 12px; padding: 8px 14px; background: #d81b60; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.95em;';
+
+// Append it ONCE
+document.getElementById('map-type-selector').appendChild(adminBtn);
 
     // Login modal
     const loginModal = document.createElement('div');
