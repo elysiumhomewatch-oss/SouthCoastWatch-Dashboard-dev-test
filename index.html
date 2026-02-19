@@ -141,6 +141,7 @@
     animate: true
   });
   map.addLayer(markersCluster);
+    console.log('Cluster group added to map');
 
   // Basemap layers
   const basemaps = {
@@ -247,6 +248,7 @@
 
       if (typeMatch && timeMatch) {
         marker.addTo(markersCluster);
+        console.log(`Added marker ${index + 1}: type=${finalType}, lat=${lat}, lng=${lng}`);
       }
     });
   }
