@@ -27,6 +27,8 @@
     #legend div { padding: 12px; font-size: 0.95em; line-height: 1.5; }
     .legend-item { display: flex; align-items: center; margin-bottom: 6px; }
     .legend-color { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 2px solid; margin-right: 8px; }
+    .time-radio-group { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
+    .time-radio-group label { cursor: pointer; font-size: 0.95em; }
   </style>
 </head>
 <body>
@@ -47,6 +49,14 @@
     <div style="padding: 16px;">
       <div id="type-filters" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px;">
         <!-- Checkboxes generated here -->
+      </div>
+
+      <!-- Time radio buttons -->
+      <div class="time-radio-group">
+        <label><input type="radio" name="timeFilter" value="all" checked> All time</label>
+        <label><input type="radio" name="timeFilter" value="7"> Last 7 days</label>
+        <label><input type="radio" name="timeFilter" value="3"> Last 3 days</label>
+        <label><input type="radio" name="timeFilter" value="1"> Last 24 hours</label>
       </div>
     </div>
   </details>
@@ -168,6 +178,7 @@
     // ────────────────────────────────────────────────
     let allMarkers = [];
     let activeTypes = new Set(alertTypesConfig.map(t => t.key));
+    let timeFilterDays = Infinity; // default: all time
 
     // ────────────────────────────────────────────────
     // CREATE CHECKBOXES
@@ -202,15 +213,47 @@
     });
 
     // ────────────────────────────────────────────────
-    // APPLY FILTERS (type only – no time slider)
+    // TIME FILTER RADIO BUTTONS
+    // ────────────────────────────────────────────────
+    document.querySelectorAll('input[name="timeFilter"]').forEach(radio => {
+      radio.addEventListener('change', function() {
+        if (this.value === 'all') {
+          timeFilterDays = Infinity;
+        } else {
+          timeFilterDays = Number(this.value);
+        }
+        localStorage.setItem('timeFilterDays', timeFilterDays === Infinity ? 'all' : timeFilterDays);
+        applyFilters();
+      });
+
+      // Restore saved value
+      const saved = localStorage.getItem('timeFilterDays');
+      if (saved === 'all' && this.value === 'all') this.checked = true;
+      else if (Number(saved) === Number(this.value)) this.checked = true;
+    });
+
+    // ────────────────────────────────────────────────
+    // APPLY FILTERS (type + time)
     // ────────────────────────────────────────────────
     function applyFilters() {
       markersCluster.clearLayers();
 
       allMarkers.forEach(marker => {
         const type = (marker.options.alertType || 'other').toLowerCase().trim();
-        const shouldShow = activeTypes.size === 0 || activeTypes.has(type);
-        if (shouldShow) {
+        const timestamp = marker.options.timestamp;
+
+        const typeMatch = activeTypes.size === 0 || activeTypes.has(type);
+
+        let timeMatch = true;
+        if (timeFilterDays !== Infinity && timestamp) {
+          const alertTime = parseGoogleDate(timestamp);
+          if (alertTime) {
+            const daysOld = (Date.now() - alertTime) / (1000 * 60 * 60 * 24);
+            timeMatch = daysOld <= timeFilterDays;
+          }
+        }
+
+        if (typeMatch && timeMatch) {
           marker.addTo(markersCluster);
         }
       });
@@ -224,9 +267,7 @@
       const match = str.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
       if (!match) return null;
       const [, year, month0, day, hour, min, sec] = match.map(Number);
-      // month0 is 0-based → add 1 for JS Date
       const date = new Date(year, month0, day, hour, min, sec);
-      // South African format: dd/mm/yyyy hh:mm:ss (24-hour)
       const dd = String(date.getDate()).padStart(2, '0');
       const mm = String(date.getMonth() + 1).padStart(2, '0');
       const yyyy = date.getFullYear();
@@ -344,73 +385,75 @@
         document.body.innerHTML += `<p style="color:red; text-align:center; padding:20px;">Error loading map: ${err.message}</p>`;
       });
 
-  // ────────────────────────────────────────────────
-  // MAP CLICK → CONFIRM → COPY + TEMP MARKER
-  // ────────────────────────────────────────────────
-  map.on('click', function(e) {
-    if (e.originalEvent.target.closest('#legend') || e.originalEvent.target.closest('#map-type-selector') || e.originalEvent.target.tagName === 'SELECT') {
-      return;
-    }
-
-    const lat = e.latlng.lat.toFixed(6);
-    const lng = e.latlng.lng.toFixed(6);
-    const coords = `${lat}, ${lng}`;
-
-    const confirmContent = `
-      <div style="text-align:center; padding:12px; min-width:260px;">
-        <p style="margin:0 0 12px; font-weight:bold;">Report a new alert<br>at this location?</p>
-        <button id="confirmYes" style="background:#4caf50; color:white; border:none; padding:10px 20px; margin:0 8px; border-radius:6px; cursor:pointer;">
-          Yes
-        </button>
-        <button id="confirmNo" style="background:#757575; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">
-          No
-        </button>
-      </div>
-    `;
-
-    const confirmPopup = L.popup()
-      .setLatLng(e.latlng)
-      .setContent(confirmContent)
-      .openOn(map);
-
-    setTimeout(() => {
-      const yesBtn = document.getElementById('confirmYes');
-      const noBtn  = document.getElementById('confirmNo');
-
-      if (yesBtn) {
-        yesBtn.onclick = () => {
-          navigator.clipboard.writeText(coords).catch(console.error);
-
-          const tempMarker = L.circleMarker([lat, lng], {
-            radius: 12,
-            fillColor: '#ff1744',
-            color: '#d50000',
-            weight: 3,
-            opacity: 1,
-            fillOpacity: 0.7
-          }).addTo(map);
-
-          tempMarker.bindPopup(`
-            <b>New alert location (temporary)</b><br>
-            ${coords}<br>
-            <small>Paste into form – refresh map after submitting</small>
-          `).openPopup();
-
-          const toast = document.createElement('div');
-          toast.textContent = 'Coordinates copied! Paste into form.';
-          toast.style.cssText = 'position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#323232ee; color:white; padding:12px 24px; border-radius:8px; z-index:2000;';
-          document.body.appendChild(toast);
-          setTimeout(() => toast.remove(), 3000);
-
-          window.open("https://docs.google.com/forms/d/e/1FAIpQLSfRG4BSZMwlZtPakPJNaiDoR7XFpZUNDOyXRFOSY8lhfK_GtA/viewform", '_blank');
-
-          map.closePopup(confirmPopup);
-        };
+    // ────────────────────────────────────────────────
+    // MAP CLICK → CONFIRM → COPY + TEMP MARKER
+    // ────────────────────────────────────────────────
+    map.on('click', function(e) {
+      if (e.originalEvent.target.closest('#legend') || e.originalEvent.target.closest('#map-type-selector') || e.originalEvent.target.tagName === 'SELECT') {
+        return;
       }
 
-      if (noBtn) {
-        noBtn.onclick = () => map.closePopup(confirmPopup);
-      }
-    }, 100);
-  });
-</script>
+      const lat = e.latlng.lat.toFixed(6);
+      const lng = e.latlng.lng.toFixed(6);
+      const coords = `${lat}, ${lng}`;
+
+      const confirmContent = `
+        <div style="text-align:center; padding:12px; min-width:260px;">
+          <p style="margin:0 0 12px; font-weight:bold;">Report a new alert<br>at this location?</p>
+          <button id="confirmYes" style="background:#4caf50; color:white; border:none; padding:10px 20px; margin:0 8px; border-radius:6px; cursor:pointer;">
+            Yes
+          </button>
+          <button id="confirmNo" style="background:#757575; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">
+            No
+          </button>
+        </div>
+      `;
+
+      const confirmPopup = L.popup()
+        .setLatLng(e.latlng)
+        .setContent(confirmContent)
+        .openOn(map);
+
+      setTimeout(() => {
+        const yesBtn = document.getElementById('confirmYes');
+        const noBtn  = document.getElementById('confirmNo');
+
+        if (yesBtn) {
+          yesBtn.onclick = () => {
+            navigator.clipboard.writeText(coords).catch(console.error);
+
+            const tempMarker = L.circleMarker([lat, lng], {
+              radius: 12,
+              fillColor: '#ff1744',
+              color: '#d50000',
+              weight: 3,
+              opacity: 1,
+              fillOpacity: 0.7
+            }).addTo(map);
+
+            tempMarker.bindPopup(`
+              <b>New alert location (temporary)</b><br>
+              ${coords}<br>
+              <small>Paste into form – refresh map after submitting</small>
+            `).openPopup();
+
+            const toast = document.createElement('div');
+            toast.textContent = 'Coordinates copied! Paste into form.';
+            toast.style.cssText = 'position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#323232ee; color:white; padding:12px 24px; border-radius:8px; z-index:2000;';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+
+            window.open("https://docs.google.com/forms/d/e/1FAIpQLSfRG4BSZMwlZtPakPJNaiDoR7XFpZUNDOyXRFOSY8lhfK_GtA/viewform", '_blank');
+
+            map.closePopup(confirmPopup);
+          };
+        }
+
+        if (noBtn) {
+          noBtn.onclick = () => map.closePopup(confirmPopup);
+        }
+      }, 100);
+    });
+  </script>
+</body>
+</html>
