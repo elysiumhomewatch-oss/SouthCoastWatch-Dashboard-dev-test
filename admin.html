@@ -56,20 +56,22 @@
 
   <script>
   // ────────────────────────────────────────────────
-  // YOUR DEPLOYED APPS SCRIPT WEB APP URL
+  // YOUR APPS SCRIPT URL (keep this exactly as is)
   // ────────────────────────────────────────────────
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyT27PxzMVY3KxMoiccBTipjQQ-44IYxQJqhuRB1v8tCXu7LUpMpcALeHltcl0RoZaW/exec";
 
-  // Get stored auth
+  // Get stored admin credentials from localStorage
   const storedAuth = JSON.parse(localStorage.getItem('adminAuth') || 'null');
 
-  // If no valid auth data → force redirect to login
+  // If no valid credentials → immediately redirect to login page
   if (!storedAuth || !storedAuth.email || !storedAuth.token) {
     alert("Please log in from the main dashboard first.");
-    window.location.href = "/"; // adjust to your real index.html path if needed
+    window.location.href = "/"; // change to full path if needed, e.g. "index.html"
   }
 
-  // Verify authentication server-side
+  // ────────────────────────────────────────────────
+  // Verify admin credentials by calling the Apps Script
+  // ────────────────────────────────────────────────
   async function verifyAdminAuth() {
     const params = new URLSearchParams({
       action: "check-auth",
@@ -81,7 +83,8 @@
       const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
       const data = await response.json();
 
-      console.log("Server auth response:", data); // ← debug line – keep for now
+      // Debug: show what the server actually returned
+      console.log("Server auth response:", data);
 
       if (!data.success || !data.isAdmin) {
         alert("Session invalid or expired. Please log in again.");
@@ -100,7 +103,9 @@
     }
   }
 
-  // Load and display alerts (only after auth check passes)
+  // ────────────────────────────────────────────────
+  // Load alerts from the sheet (only runs after auth passes)
+  // ────────────────────────────────────────────────
   async function loadAlerts() {
     document.getElementById('loading').textContent = "Verifying access...";
 
@@ -147,7 +152,7 @@
         tbody.appendChild(tr);
       });
 
-      // Handle status changes
+      // Status change handler
       document.querySelectorAll('.status-select').forEach(select => {
         select.addEventListener('change', async function() {
           const row = this.dataset.row;
@@ -183,7 +188,7 @@
         });
       });
 
-      // Handle "View on Map"
+      // View on map handler
       document.querySelectorAll('.view-btn').forEach(btn => {
         btn.addEventListener('click', function() {
           const lat = parseFloat(this.dataset.lat);
@@ -206,7 +211,7 @@
     }
   }
 
-  // Logout handler
+  // Logout button
   document.getElementById('logout').addEventListener('click', () => {
     if (confirm("Are you sure you want to logout?")) {
       localStorage.removeItem('adminAuth');
@@ -220,7 +225,7 @@
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   }).addTo(map);
 
-  // Start loading
+  // Start the process
   loadAlerts();
 </script>
 </body>
