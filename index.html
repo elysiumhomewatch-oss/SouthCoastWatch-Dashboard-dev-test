@@ -95,7 +95,7 @@
   </div>
   <script>
     // ────────────────────────────────────────────────
-    // ALERT COLORS
+    // ALERT COLORS – DEFINED FIRST
     // ────────────────────────────────────────────────
     const alertColors = {
       "general": { fill: "#d32f2f", border: "#b71c1c" },
@@ -344,27 +344,25 @@
       applyFilters();
     });
     // ────────────────────────────────────────────────
-    // APPLY FILTERS (with extra safety)
+    // APPLY FILTERS
     // ────────────────────────────────────────────────
     function applyFilters() {
-      console.log('applyFilters called | timeFilterDays:', timeFilterDays);
       markersCluster.clearLayers();
       allMarkers.forEach(marker => {
         const type = (marker.options.alertType || 'other').toLowerCase().trim();
         const timestamp = marker.options.timestamp;
+        const status = (marker.options.status || '').toLowerCase().trim();
         const typeMatch = activeTypes.size === 0 || activeTypes.has(type);
         let timeMatch = true;
         if (timeFilterDays !== Infinity && timestamp) {
           const alertTimeMs = parseGoogleDateToMs(timestamp);
-          console.log('Parsing timestamp:', timestamp, '→ ms:', alertTimeMs);
           if (alertTimeMs) {
             const daysOld = (Date.now() - alertTimeMs) / (1000 * 60 * 60 * 24);
             timeMatch = daysOld <= timeFilterDays;
-          } else {
-            console.warn('Failed to parse timestamp:', timestamp);
           }
         }
-        if (typeMatch && timeMatch) {
+        const activeMatch = !showActiveOnly || !status || status !== 'resolved';
+        if (typeMatch && timeMatch && activeMatch) {
           marker.addTo(markersCluster);
         }
       });
@@ -396,7 +394,7 @@
       return `${dd}/${mm}/${yyyy} ${hh}:${minStr}:${ss}`;
     }
     // ────────────────────────────────────────────────
-    // LOAD MARKERS
+    // LOAD MARKERS – now also store status (column L = index 11)
     // ────────────────────────────────────────────────
     const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
     const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
@@ -424,6 +422,7 @@
           let alertType = alertTypeRaw.toLowerCase().trim();
           const details = c[7]?.v || '';
           const photo = c[8]?.v || '';
+          const status = c[11]?.v || ''; // Column L = index 11 (0-based)
           let lat = null, lng = null;
           if (combinedCoords && combinedCoords.includes(',')) {
             const parts = combinedCoords.split(',').map(s => parseFloat(s.trim()));
@@ -465,14 +464,16 @@
             ${spotDesc}<br>
             ${details.substring(0, 150)}${details.length > 150 ? '...' : ''}<br>
             Reported: ${parseGoogleDate(timestamp) || timestamp || 'Unknown'}<br>
+            Status: ${status || 'Unspecified'}<br>
             By: ${reporter}<br>
             ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
           `);
           marker.options.alertType = finalType;
+          marker.options.timestamp = timestamp;
+          marker.options.status = status;
           allMarkers.push(marker);
         });
-        // Delay initial filter to ensure markers are ready
-        setTimeout(applyFilters, 100);
+        applyFilters();
         setTimeout(() => {
           const bounds = markersCluster.getBounds();
           if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
