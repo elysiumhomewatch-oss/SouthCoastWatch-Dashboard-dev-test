@@ -110,7 +110,7 @@
   };
 
   // ────────────────────────────────────────────────
-  // ALERT TYPE CONFIG – exact match to your new form options
+  // ALERT TYPE CONFIG – exact match to form
   // ────────────────────────────────────────────────
   const alertTypesConfig = [
     { key: "general",         label: "General/Suspicious",          fill: "#d32f2f", border: "#b71c1c" },
@@ -164,13 +164,17 @@
   });
 
   // ────────────────────────────────────────────────
-  // FILTER STATE
+  // FILTER STATE (type + time)
   // ────────────────────────────────────────────────
   let allMarkers = [];
   let activeTypes = new Set(alertTypesConfig.map(t => t.key));
+  let timeFilterDays = Infinity; // default: all time
+
+  // Time slider labels (dynamically sized)
+  const timeLabels = [];
 
   // ────────────────────────────────────────────────
-  // CREATE CHECKBOXES – labels match form exactly
+  // CREATE TYPE CHECKBOXES
   // ────────────────────────────────────────────────
   const typeFiltersDiv = document.getElementById('type-filters');
   alertTypesConfig.forEach(type => {
@@ -202,22 +206,65 @@
   });
 
   // ────────────────────────────────────────────────
-  // APPLY FILTERS – exact key matching
+  // TIME SLIDER SETUP (dynamic range)
+  // ────────────────────────────────────────────────
+  const timeSlider = document.createElement('input');
+  timeSlider.type = 'range';
+  timeSlider.id = 'time-slider';
+  timeSlider.min = 1;
+  timeSlider.step = 1;
+  timeSlider.value = 'max'; // we'll set max later
+
+  const timeLabel = document.createElement('div');
+  timeLabel.id = 'time-label';
+  timeLabel.style = 'text-align: center; margin-top: 6px; font-weight: bold; color: #1976d2;';
+
+  const sliderContainer = document.createElement('div');
+  sliderContainer.innerHTML = '<strong>Show alerts from the last:</strong>';
+  sliderContainer.appendChild(timeSlider);
+  sliderContainer.appendChild(timeLabel);
+
+  // Insert slider after type filters
+  typeFiltersDiv.parentNode.insertBefore(sliderContainer, typeFiltersDiv.nextSibling);
+
+  // ────────────────────────────────────────────────
+  // APPLY FILTERS (type + time)
   // ────────────────────────────────────────────────
   function applyFilters() {
     markersCluster.clearLayers();
 
     allMarkers.forEach(marker => {
       const type = (marker.options.alertType || 'other').toLowerCase().trim();
-      const shouldShow = activeTypes.size === 0 || activeTypes.has(type);
-      if (shouldShow) {
+      const timestamp = marker.options.timestamp;
+
+      const typeMatch = activeTypes.size === 0 || activeTypes.has(type);
+
+      let timeMatch = true;
+      if (timeFilterDays !== Infinity && timestamp) {
+        const alertTime = parseGoogleDate(timestamp);
+        if (alertTime) {
+          const daysOld = (Date.now() - alertTime) / (1000 * 60 * 60 * 24);
+          timeMatch = daysOld <= timeFilterDays;
+        }
+      }
+
+      if (typeMatch && timeMatch) {
         marker.addTo(markersCluster);
       }
     });
   }
 
+  // Parse Google Sheets timestamp (e.g. Date(2025,1,15,12,0,0))
+  function parseGoogleDate(str) {
+    if (!str || !str.startsWith('Date(')) return null;
+    const match = str.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
+    if (!match) return null;
+    const [, y, m, d, h, min, s] = match;
+    return new Date(y, m, d, h, min, s).getTime();
+  }
+
   // ────────────────────────────────────────────────
-  // LOAD MARKERS – classification matches form options exactly
+  // LOAD MARKERS – store timestamp too
   // ────────────────────────────────────────────────
   const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
@@ -238,6 +285,8 @@
       console.log(`Loaded ${rows.length} rows`);
 
       allMarkers = [];
+
+      let oldestDate = Date.now();
 
       rows.forEach(row => {
         const c = row.c || [];
@@ -270,7 +319,7 @@
         let colorInfo = alertColors["other"];
         let finalType = "other";
 
-        // Exact match to form options (no description fallback)
+        // Exact match to form options
         if      (alertType.includes("general")         || alertType.includes("suspicious"))   { colorInfo = alertColors["general"];        finalType = "general"; }
         else if (alertType.includes("red wave")        || alertType.includes("flood"))        { colorInfo = alertColors["red wave"];       finalType = "red wave"; }
         else if (alertType.includes("amber blaze")     || alertType.includes("fire") || alertType.includes("hazard")) { colorInfo = alertColors["amber blaze"];    finalType = "amber blaze"; }
@@ -305,8 +354,41 @@
         `);
 
         marker.options.alertType = finalType;
+        marker.options.timestamp = timestamp;  // store for time filter
+
+        // Track oldest timestamp
+        const alertTime = parseGoogleDate(timestamp);
+        if (alertTime && alertTime < oldestDate) {
+          oldestDate = alertTime;
+        }
 
         allMarkers.push(marker);
+      });
+
+      // Setup time slider range based on oldest alert
+      const daysSinceOldest = Math.max(1, Math.ceil((Date.now() - oldestDate) / (1000 * 60 * 60 * 24)));
+      timeSlider.max = daysSinceOldest;
+      timeSlider.value = daysSinceOldest; // default to max (all time)
+      timeLabels.length = 0;
+      for (let i = 1; i <= daysSinceOldest; i++) {
+        timeLabels.push(i === daysSinceOldest ? 'All time' : `${i} day${i > 1 ? 's' : ''}`);
+      }
+      timeLabel.textContent = timeLabels[timeSlider.value - 1] || 'All time';
+
+      // Restore saved time filter
+      const savedDays = localStorage.getItem('timeFilterDays');
+      if (savedDays && !isNaN(savedDays) && savedDays <= daysSinceOldest) {
+        timeFilterDays = parseInt(savedDays, 10);
+        timeSlider.value = timeFilterDays;
+        timeLabel.textContent = timeLabels[timeFilterDays - 1] || `${timeFilterDays} days`;
+      }
+
+      // Slider change handler
+      timeSlider.addEventListener('input', function() {
+        timeFilterDays = parseInt(timeSlider.value, 10);
+        timeLabel.textContent = timeLabels[timeFilterDays - 1] || `${timeFilterDays} days`;
+        localStorage.setItem('timeFilterDays', timeFilterDays);
+        applyFilters();
       });
 
       applyFilters();
@@ -324,6 +406,15 @@
       console.error('Error loading Sheet:', err);
       document.body.innerHTML += `<p style="color:red; text-align:center; padding:20px;">Error loading map: ${err.message}</p>`;
     });
+
+  // Parse Google Sheets timestamp
+  function parseGoogleDate(str) {
+    if (!str || !str.startsWith('Date(')) return null;
+    const match = str.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
+    if (!match) return null;
+    const [, y, m, d, h, min, s] = match;
+    return new Date(y, m, d, h, min, s).getTime();
+  }
 
   // ────────────────────────────────────────────────
   // MAP CLICK → CONFIRM → COPY + TEMP MARKER
