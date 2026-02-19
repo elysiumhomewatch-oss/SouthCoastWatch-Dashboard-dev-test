@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   
+  <!-- Leaflet core (same as public page) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
@@ -12,405 +13,188 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f4f6f9;
-      color: #333;
-    }
-    header {
-      background: #1a3c6d;
-      color: white;
-      padding: 15px 30px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    h1 { margin: 0; font-size: 1.6em; }
-    #logout { background: #d32f2f; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
-    #map-container { height: calc(100vh - 140px); position: relative; }
-    #map { height: 100%; }
-    #controls {
-      position: absolute;
-      top: 15px;
-      left: 15px;
-      z-index: 1000;
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 3px 12px rgba(0,0,0,0.2);
-      min-width: 280px;
-    }
-    #status-filter, #search-input {
-      width: 100%;
-      padding: 8px;
-      margin: 8px 0;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
-    #alert-table-container {
-      position: absolute;
-      bottom: 15px;
-      left: 15px;
-      right: 15px;
-      height: 220px;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 3px 12px rgba(0,0,0,0.2);
-      overflow: hidden;
-    }
-    #alert-table {
-      width: 100%;
-      height: 100%;
-      border-collapse: collapse;
-    }
-    #alert-table th, #alert-table td {
-      padding: 8px;
-      border-bottom: 1px solid #eee;
-      text-align: left;
-      font-size: 0.9em;
-    }
-    #alert-table th { background: #f5f5f5; font-weight: bold; }
-    .status-select {
-      padding: 4px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-    }
-    .resolved { background: #c8e6c9; }
-    .in-progress { background: #fff3e0; }
-    .pending { background: #ffebee; }
-    #batch-actions {
-      padding: 10px;
-      background: #f5f5f5;
-      border-top: 1px solid #ddd;
-      text-align: right;
-    }
-    @media (max-width: 768px) {
-      #controls { width: 90%; left: 5%; }
-      #alert-table-container { height: 180px; }
-    }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
+    h1 { text-align: center; color: #1a3c6d; margin-bottom: 10px; }
+    #map { height: 500px; margin: 20px auto; max-width: 1200px; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    #alert-table { width: 100%; max-width: 1200px; margin: 20px auto; border-collapse: collapse; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    #alert-table th, #alert-table td { padding: 12px; border: 1px solid #ddd; text-align: left; }
+    #alert-table th { background: #e3f2fd; font-weight: bold; }
+    #alert-table tr:nth-child(even) { background: #f9f9f9; }
+    .status-select { padding: 6px; border-radius: 4px; }
+    .logout-btn { background: #d32f2f; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; float: right; }
+    .logout-btn:hover { background: #b71c1c; }
+    #loading { text-align: center; padding: 40px; font-size: 1.2em; color: #555; }
+    #error { color: red; text-align: center; padding: 20px; }
+    #admin-panel { max-width: 1200px; margin: 0 auto; }
   </style>
 </head>
 <body>
 
-  <header>
+  <div id="admin-panel">
     <h1>SouthCoastWatch Admin Dashboard</h1>
-    <button id="logout">Logout</button>
-  </header>
+    <button class="logout-btn" id="logout">Logout</button>
 
-  <div id="map-container">
     <div id="map"></div>
 
-    <div id="controls">
-      <h3>Filters</h3>
-      <select id="status-filter">
-        <option value="">All statuses</option>
-        <option value="pending">Pending</option>
-        <option value="in-progress">In Progress</option>
-        <option value="resolved">Resolved</option>
-        <option value="unresolved">Unresolved only</option>
-      </select>
-      <input type="text" id="search-input" placeholder="Search reporter, zone, description...">
-    </div>
+    <table id="alert-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Type</th>
+          <th>Zone</th>
+          <th>Reporter</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="alert-table-body"></tbody>
+    </table>
 
-    <div id="alert-table-container">
-      <table id="alert-table">
-        <thead>
-          <tr>
-            <th><input type="checkbox" id="select-all"></th>
-            <th>Time</th>
-            <th>Type</th>
-            <th>Zone</th>
-            <th>Reporter</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="alert-table-body"></tbody>
-      </table>
-      <div id="batch-actions">
-        <button id="batch-resolve">Mark selected as Resolved</button>
-        <button id="batch-delete" style="background:#d32f2f;">Delete selected</button>
-      </div>
-    </div>
+    <div id="loading">Loading alerts...</div>
+    <div id="error" style="display:none;"></div>
   </div>
 
   <script>
-  // ────────────────────────────────────────────────
-  // CONFIG & COLORS (unchanged)
-  // ────────────────────────────────────────────────
-  const alertColors = {
-    "general":         "#d32f2f",
-    "red wave":        "#1976d2",
-    "amber blaze":     "#f57c00",
-    "scam":            "#7b1fa2",
-    "electrical":      "#fbc02d",
-    "water":           "#42a5f5",
-    "illegal dumping": "#795548",
-    "municipal":       "#757575",
-    "other":           "#424242"
-  };
+    // CHANGE THIS TO YOUR REAL APPS SCRIPT WEB APP URL
+    const SCRIPT_URL = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec";
 
-  const zoneCenters = {
-    "Highway West": [-30.464248, 30.637618],
-    "Sea East":     [-30.90,     30.45],
-    "River North":  [-30.82,     30.38],
-    "River South":  [-30.88,     30.32],
-    "Central":      [-30.85,     30.35],
-    "Unknown":      [-30.85,     30.35]
-  };
+    // Get stored auth
+    const storedAuth = JSON.parse(localStorage.getItem('adminAuth') || 'null');
 
-  // ────────────────────────────────────────────────
-  // MAP & CLUSTER SETUP (unchanged)
-  // ────────────────────────────────────────────────
-  const map = L.map('map', { center: [-30.85, 30.35], zoom: 12, maxZoom: 19 });
+    if (!storedAuth || !storedAuth.email || !storedAuth.token) {
+      alert("Please log in first.");
+      window.location.href = "/"; // redirect to public dashboard
+    }
 
-  const markersCluster = L.markerClusterGroup({
-    maxClusterRadius: 50,
-    spiderfyOnMaxZoom: true,
-    showCoverageOnHover: false,
-    zoomToBoundsOnClick: true,
-    animate: true
-  });
-  map.addLayer(markersCluster);
-
-  // ────────────────────────────────────────────────
-  // STATE
-  // ────────────────────────────────────────────────
-  let allAlerts = [];      // full data
-  let filteredAlerts = []; // current view
-
-  // ────────────────────────────────────────────────
-  // LOAD DATA
-  // ────────────────────────────────────────────────
-  const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
-
-  fetch(url)
-    .then(r => r.ok ? r.text() : Promise.reject('HTTP error'))
-    .then(text => {
-      let cleaned = text.replace(/^\/\*(.|\n)*?\*\//, '').trim()
-        .replace(/^google\.visualization\.Query\.setResponse\(/, '')
-        .replace(/\);?$/, '');
-
-      const data = JSON.parse(cleaned);
-      if (!data?.table?.rows) throw new Error('No data');
-
-      const rows = data.table.rows;
-      console.log(`Loaded ${rows.length} alerts`);
-
-      allAlerts = rows.map((row, index) => {
-        const c = row.c || [];
-
-        const timestamp     = c[0]?.v || '';
-        const reporter      = c[1]?.v || 'Anonymous';
-        const zone          = c[3]?.v || 'Unknown';
-        const spotDesc      = c[4]?.v || '';
-        const combinedCoords = c[5]?.v || '';
-        const alertTypeRaw  = c[6]?.v || 'Other';
-        const details       = c[7]?.v || '';
-        const photo         = c[8]?.v || '';
-        const status        = c[11]?.v || '';  // Column L = status
-
-        let lat = null, lng = null;
-        if (combinedCoords && combinedCoords.includes(',')) {
-          const parts = combinedCoords.split(',').map(s => parseFloat(s.trim()));
-          if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-            lat = parts[0];
-            lng = parts[1];
-          }
-        }
-
-        if (!lat || !lng) {
-          const center = zoneCenters[zone] || [-30.85, 30.35];
-          lat = center[0];
-          lng = center[1];
-        }
-
-        const alertType = alertTypeRaw.toLowerCase().trim();
-
-        const marker = L.circleMarker([lat, lng], {
-          radius: 10,
-          fillColor: alertColors[alertType] || '#424242',
-          color: '#fff',
-          weight: 2,
-          opacity: 1,
-          fillOpacity: 0.85
-        });
-
-        marker.bindPopup(`
-          <b>${alertTypeRaw} - ${zone}</b><br>
-          ${spotDesc}<br>
-          ${details.substring(0, 200)}${details.length > 200 ? '...' : ''}<br>
-          Reported: ${timestamp}<br>
-          Status: ${status || 'Pending'}<br>
-          Reporter: ${reporter}<br>
-          ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
-        `);
-
-        marker.alertData = {
-          id: index,
-          type: alertType,
-          timestamp,
-          status: status.toLowerCase().trim(),
-          reporter,
-          zone,
-          desc: details,
-          photo
-        };
-
-        return { marker, data: marker.alertData };
+    // Verify auth with server
+    async function verifyAdmin() {
+      const params = new URLSearchParams({
+        action: "check-auth",
+        email: storedAuth.email,
+        token: storedAuth.token
       });
 
-      // Initial render
-      renderFilteredAlerts();
-      fitToAlerts();
-    })
-    .catch(err => console.error('Load error:', err));
+      try {
+        const response = await fetch(`${SCRIPT_URL}?${params}`);
+        const data = await response.json();
 
-  // ────────────────────────────────────────────────
-  // FILTER & RENDER LOGIC – FIXED
-  // ────────────────────────────────────────────────
-  function renderFilteredAlerts() {
-    markersCluster.clearLayers();
+        if (!data.success || !data.isAdmin) {
+          alert("Invalid or expired session. Please log in again.");
+          localStorage.removeItem('adminAuth');
+          window.location.href = "/";
+          return false;
+        }
 
-    const statusFilter = document.getElementById('status-filter').value;
-    let searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
-
-    filteredAlerts = allAlerts.filter(item => {
-      const d = item.data;
-
-      // Status filter – fixed logic
-      if (statusFilter === 'unresolved') {
-        if (d.status === 'resolved') return false;
-      } else if (statusFilter && d.status !== statusFilter) {
+        document.getElementById('loading').style.display = 'none';
+        return true;
+      } catch (err) {
+        console.error("Auth check failed", err);
+        document.getElementById('error').textContent = "Authentication failed. Please try again.";
+        document.getElementById('error').style.display = 'block';
         return false;
       }
-
-      // Search – more forgiving
-      if (searchTerm) {
-        const searchable = [
-          d.reporter.toLowerCase(),
-          d.zone.toLowerCase(),
-          d.desc.toLowerCase(),
-          d.type.toLowerCase(),
-          d.timestamp.toLowerCase()
-        ].join(' ');
-        if (!searchable.includes(searchTerm)) return false;
-      }
-
-      return true;
-    });
-
-    console.log(`Filtered down to ${filteredAlerts.length} alerts`);
-
-    filteredAlerts.forEach(item => {
-      markersCluster.addLayer(item.marker);
-    });
-
-    // Update table
-    const tbody = document.getElementById('alert-table-body');
-    tbody.innerHTML = '';
-
-    filteredAlerts.forEach(item => {
-      const d = item.data;
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><input type="checkbox" class="select-row" data-id="${d.id}"></td>
-        <td>${d.timestamp || '—'}</td>
-        <td>${d.type}</td>
-        <td>${d.zone}</td>
-        <td>${d.reporter}</td>
-        <td>
-          <select class="status-select" data-id="${d.id}">
-            <option value="pending" ${d.status === 'pending' ? 'selected' : ''}>Pending</option>
-            <option value="in-progress" ${d.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
-            <option value="resolved" ${d.status === 'resolved' ? 'selected' : ''}>Resolved</option>
-          </select>
-        </td>
-        <td><button class="view-btn" data-id="${d.id}">View</button></td>
-      `;
-      tbody.appendChild(tr);
-    });
-
-    // Status change
-    document.querySelectorAll('.status-select').forEach(select => {
-      select.addEventListener('change', function() {
-        const id = this.dataset.id;
-        const newStatus = this.value;
-        console.log(`Update alert ${id} status to ${newStatus}`);
-        const alert = allAlerts.find(a => a.data.id == id);
-        if (alert) alert.data.status = newStatus;
-      });
-    });
-
-    // View button
-    document.querySelectorAll('.view-btn').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const id = this.dataset.id;
-        const alert = filteredAlerts.find(a => a.data.id == id);
-        if (alert) alert.marker.openPopup();
-      });
-    });
-
-    // Select all
-    document.getElementById('select-all').addEventListener('change', function() {
-      document.querySelectorAll('.select-row').forEach(cb => cb.checked = this.checked);
-    });
-
-    fitToAlerts();
-  }
-
-  function fitToAlerts() {
-    setTimeout(() => {
-      const bounds = markersCluster.getBounds();
-      if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
-        map.fitBounds(bounds, { padding: [60, 60] });
-      } else {
-        map.setView([-30.85, 30.35], 12);
-      }
-    }, 500);
-  }
-
-  // ────────────────────────────────────────────────
-  // FILTER LISTENERS
-  // ────────────────────────────────────────────────
-  document.getElementById('status-filter').addEventListener('change', renderFilteredAlerts);
-  document.getElementById('search-input').addEventListener('input', renderFilteredAlerts);
-
-  // Clear search helper
-  document.getElementById('search-input').addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-      e.target.value = '';
-      renderFilteredAlerts();
     }
-  });
 
-  // Batch actions (demo – local only)
-  document.getElementById('batch-resolve').addEventListener('click', () => {
-    const selected = Array.from(document.querySelectorAll('.select-row:checked')).map(cb => cb.dataset.id);
-    if (selected.length === 0) return alert('No alerts selected');
-    if (!confirm(`Mark ${selected.length} alerts as Resolved?`)) return;
-    selected.forEach(id => {
-      const alert = allAlerts.find(a => a.data.id == id);
-      if (alert) alert.data.status = 'resolved';
+    // Load alerts (only if auth is valid)
+    async function loadAlerts() {
+      const isValid = await verifyAdmin();
+      if (!isValid) return;
+
+      try {
+        const response = await fetch(`${SCRIPT_URL}?action=get-alerts`);
+        const data = await response.json();
+
+        if (!data.success) {
+          document.getElementById('error').textContent = data.error || "Failed to load alerts";
+          document.getElementById('error').style.display = 'block';
+          return;
+        }
+
+        const tbody = document.getElementById('alert-table-body');
+        tbody.innerHTML = '';
+
+        data.alerts.forEach(alert => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${alert.timestamp || '—'}</td>
+            <td>${alert.type}</td>
+            <td>${alert.zone}</td>
+            <td>${alert.reporter}</td>
+            <td>
+              <select class="status-select" data-id="${alert.row}">
+                <option value="pending" ${alert.status === 'pending' ? 'selected' : ''}>Pending</option>
+                <option value="in-progress" ${alert.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+                <option value="resolved" ${alert.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+              </select>
+            </td>
+            <td><button class="view-btn" data-lat="${alert.lat}" data-lng="${alert.lng}">View on Map</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        // Status change handler
+        document.querySelectorAll('.status-select').forEach(select => {
+          select.addEventListener('change', async function() {
+            const row = this.dataset.id;
+            const newStatus = this.value;
+
+            if (confirm(`Change status to "${newStatus}"?`)) {
+              const params = new URLSearchParams({
+                action: "update-status",
+                row: row,
+                status: newStatus,
+                email: storedAuth.email,
+                token: storedAuth.token
+              });
+
+              const response = await fetch(`${SCRIPT_URL}?${params}`);
+              const result = await response.json();
+
+              if (result.success) {
+                alert("Status updated!");
+              } else {
+                alert("Failed to update: " + (result.error || "Unknown error"));
+                this.value = alert.status; // revert
+              }
+            }
+          });
+        });
+
+        // View on map
+        document.querySelectorAll('.view-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const lat = parseFloat(this.dataset.lat);
+            const lng = parseFloat(this.dataset.lng);
+            if (!isNaN(lat) && !isNaN(lng)) {
+              map.setView([lat, lng], 16);
+              // Optional: open popup or highlight marker
+            }
+          });
+        });
+
+      } catch (err) {
+        console.error("Load alerts failed", err);
+        document.getElementById('error').textContent = "Failed to load alerts";
+        document.getElementById('error').style.display = 'block';
+      }
+    }
+
+    // Logout
+    document.getElementById('logout').addEventListener('click', () => {
+      if (confirm("Logout from admin panel?")) {
+        localStorage.removeItem('adminAuth');
+        window.location.href = "/";
+      }
     });
-    renderFilteredAlerts();
-  });
 
-  document.getElementById('batch-delete').addEventListener('click', () => {
-    const selected = Array.from(document.querySelectorAll('.select-row:checked')).map(cb => cb.dataset.id);
-    if (selected.length === 0) return alert('No alerts selected');
-    if (!confirm(`Delete ${selected.length} alerts?`)) return;
-    allAlerts = allAlerts.filter(a => !selected.includes(a.data.id.toString()));
-    renderFilteredAlerts();
-  });
+    // Initialize map (placeholder – can show alerts later)
+    const map = L.map('map').setView([-30.85, 30.35], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
 
-  // Logout placeholder
-  document.getElementById('logout').addEventListener('click', () => {
-    alert('Logout not implemented yet.');
-  });
-</script>
+    // Load data after auth check
+    loadAlerts();
+  </script>
 </body>
 </html>
