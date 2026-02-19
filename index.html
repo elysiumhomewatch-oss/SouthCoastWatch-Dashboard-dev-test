@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>SouthCoastWatch Community Dashboard </title>
+  <title>SouthCoastWatch Community Dashboard</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   
@@ -82,338 +82,267 @@
   </div>
 
   <script>
-  // ────────────────────────────────────────────────
-  // ALERT COLORS – DEFINED FIRST
-  // ────────────────────────────────────────────────
-  const alertColors = {
-    "general":         { fill: "#d32f2f", border: "#b71c1c" },
-    "red wave":        { fill: "#1976d2", border: "#0d47a1" },
-    "amber blaze":     { fill: "#f57c00", border: "#ef6c00" },
-    "scam":            { fill: "#7b1fa2", border: "#4a148c" },
-    "electrical":      { fill: "#fbc02d", border: "#f9a825" },
-    "water":           { fill: "#42a5f5", border: "#1976d2" },
-    "illegal dumping": { fill: "#795548", border: "#4e342e" },
-    "municipal":       { fill: "#757575", border: "#424242" },
-    "other":           { fill: "#424242", border: "#212121" }
-  };
+    // ────────────────────────────────────────────────
+    // ALERT COLORS – DEFINED FIRST
+    // ────────────────────────────────────────────────
+    const alertColors = {
+      "general":         { fill: "#d32f2f", border: "#b71c1c" },
+      "red wave":        { fill: "#1976d2", border: "#0d47a1" },
+      "amber blaze":     { fill: "#f57c00", border: "#ef6c00" },
+      "scam":            { fill: "#7b1fa2", border: "#4a148c" },
+      "electrical":      { fill: "#fbc02d", border: "#f9a825" },
+      "water":           { fill: "#42a5f5", border: "#1976d2" },
+      "illegal dumping": { fill: "#795548", border: "#4e342e" },
+      "municipal":       { fill: "#757575", border: "#424242" },
+      "other":           { fill: "#424242", border: "#212121" }
+    };
 
-  // ────────────────────────────────────────────────
-  // ZONE FALLBACK CENTERS
-  // ────────────────────────────────────────────────
-  const zoneCenters = {
-    "Highway West": [-30.464248, 30.637618],
-    "Sea East":     [-30.90,     30.45],
-    "River North":  [-30.82,     30.38],
-    "River South":  [-30.88,     30.32],
-    "Central":      [-30.85,     30.35],
-    "Unknown":      [-30.85,     30.35]
-  };
+    // ────────────────────────────────────────────────
+    // ZONE FALLBACK CENTERS
+    // ────────────────────────────────────────────────
+    const zoneCenters = {
+      "Highway West": [-30.464248, 30.637618],
+      "Sea East":     [-30.90,     30.45],
+      "River North":  [-30.82,     30.38],
+      "River South":  [-30.88,     30.32],
+      "Central":      [-30.85,     30.35],
+      "Unknown":      [-30.85,     30.35]
+    };
 
-  // ────────────────────────────────────────────────
-  // ALERT TYPE CONFIG – exact match to form
-  // ────────────────────────────────────────────────
-  const alertTypesConfig = [
-    { key: "general",         label: "General/Suspicious",          fill: "#d32f2f", border: "#b71c1c" },
-    { key: "red wave",        label: "Red Wave (Flood)",            fill: "#1976d2", border: "#0d47a1" },
-    { key: "amber blaze",     label: "Amber Blaze (Fire Hazard)",   fill: "#f57c00", border: "#ef6c00" },
-    { key: "scam",            label: "Scam/Doorstep",               fill: "#7b1fa2", border: "#4a148c" },
-    { key: "electrical",      label: "Electrical Fault",            fill: "#fbc02d", border: "#f9a825" },
-    { key: "water",           label: "Water Leak/Interruption",     fill: "#42a5f5", border: "#1976d2" },
-    { key: "illegal dumping", label: "Illegal Dumping",             fill: "#795548", border: "#4e342e" },
-    { key: "municipal",       label: "Municipal (Potholes/Lights/Bushes)", fill: "#757575", border: "#424242" },
-    { key: "other",           label: "Other",                       fill: "#424242", border: "#212121" }
-  ];
+    // ────────────────────────────────────────────────
+    // ALERT TYPE CONFIG – exact match to form
+    // ────────────────────────────────────────────────
+    const alertTypesConfig = [
+      { key: "general",         label: "General/Suspicious",          fill: "#d32f2f", border: "#b71c1c" },
+      { key: "red wave",        label: "Red Wave (Flood)",            fill: "#1976d2", border: "#0d47a1" },
+      { key: "amber blaze",     label: "Amber Blaze (Fire Hazard)",   fill: "#f57c00", border: "#ef6c00" },
+      { key: "scam",            label: "Scam/Doorstep",               fill: "#7b1fa2", border: "#4a148c" },
+      { key: "electrical",      label: "Electrical Fault",            fill: "#fbc02d", border: "#f9a825" },
+      { key: "water",           label: "Water Leak/Interruption",     fill: "#42a5f5", border: "#1976d2" },
+      { key: "illegal dumping", label: "Illegal Dumping",             fill: "#795548", border: "#4e342e" },
+      { key: "municipal",       label: "Municipal (Potholes/Lights/Bushes)", fill: "#757575", border: "#424242" },
+      { key: "other",           label: "Other",                       fill: "#424242", border: "#212121" }
+    ];
 
-  // ────────────────────────────────────────────────
-  // INITIALIZE MAP & CLUSTER GROUP
-  // ────────────────────────────────────────────────
-  const map = L.map('map', {
-    center: [-30.85, 30.35],
-    zoom: 12,
-    maxZoom: 19
-  });
-
-  const markersCluster = L.markerClusterGroup({
-    maxClusterRadius: 40,
-    spiderfyOnMaxZoom: true,
-    showCoverageOnHover: false,
-    zoomToBoundsOnClick: true,
-    animate: true
-  });
-  map.addLayer(markersCluster);
-  console.log('Cluster group added to map');
-
-  // Basemap layers
-  const basemaps = {
-    osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19 }),
-    satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxZoom: 19 }),
-    terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors, SRTM | &copy; OpenTopoMap', maxZoom: 17 }),
-    dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19 })
-  };
-
-  const savedBasemap = localStorage.getItem('preferredBasemap') || 'osm';
-  basemaps[savedBasemap].addTo(map);
-  document.getElementById('basemap').value = savedBasemap;
-
-  document.getElementById('basemap').addEventListener('change', function(e) {
-    e.stopPropagation();
-    map.eachLayer(layer => {
-      if (layer instanceof L.TileLayer) map.removeLayer(layer);
+    // ────────────────────────────────────────────────
+    // INITIALIZE MAP & CLUSTER GROUP
+    // ────────────────────────────────────────────────
+    const map = L.map('map', {
+      center: [-30.85, 30.35],
+      zoom: 12,
+      maxZoom: 19
     });
-    basemaps[e.target.value].addTo(map);
-    localStorage.setItem('preferredBasemap', e.target.value);
-  });
 
-  // ────────────────────────────────────────────────
-  // FILTER STATE (type + time)
-  // ────────────────────────────────────────────────
-  let allMarkers = [];
-  let activeTypes = new Set(alertTypesConfig.map(t => t.key));
-  let timeFilterDays = Infinity; // default: all time
+    const markersCluster = L.markerClusterGroup({
+      maxClusterRadius: 40,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      animate: true
+    });
+    map.addLayer(markersCluster);
 
-  // ────────────────────────────────────────────────
-  // CREATE TYPE CHECKBOXES
-  // ────────────────────────────────────────────────
-  const typeFiltersDiv = document.getElementById('type-filters');
-  alertTypesConfig.forEach(type => {
-    const label = document.createElement('label');
-    label.style = 'display: flex; align-items: center; gap: 6px; cursor: pointer;';
-    label.innerHTML = `
-      <input type="checkbox" class="type-checkbox" value="${type.key}" checked>
-      <span style="width:16px; height:16px; background:${type.fill}; border-radius:50%; border:2px solid ${type.border};"></span>
-      ${type.label}
-    `;
-    typeFiltersDiv.appendChild(label);
-  });
+    // Basemap layers
+    const basemaps = {
+      osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19 }),
+      satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxZoom: 19 }),
+      terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors, SRTM | &copy; OpenTopoMap', maxZoom: 17 }),
+      dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19 })
+    };
 
-  const savedTypes = localStorage.getItem('alertTypeFilters');
-  if (savedTypes) {
-    activeTypes = new Set(JSON.parse(savedTypes));
+    const savedBasemap = localStorage.getItem('preferredBasemap') || 'osm';
+    basemaps[savedBasemap].addTo(map);
+    document.getElementById('basemap').value = savedBasemap;
+
+    document.getElementById('basemap').addEventListener('change', function(e) {
+      e.stopPropagation();
+      map.eachLayer(layer => {
+        if (layer instanceof L.TileLayer) map.removeLayer(layer);
+      });
+      basemaps[e.target.value].addTo(map);
+      localStorage.setItem('preferredBasemap', e.target.value);
+    });
+
+    // ────────────────────────────────────────────────
+    // FILTER STATE
+    // ────────────────────────────────────────────────
+    let allMarkers = [];
+    let activeTypes = new Set(alertTypesConfig.map(t => t.key));
+
+    // ────────────────────────────────────────────────
+    // CREATE CHECKBOXES
+    // ────────────────────────────────────────────────
+    const typeFiltersDiv = document.getElementById('type-filters');
+    alertTypesConfig.forEach(type => {
+      const label = document.createElement('label');
+      label.style = 'display: flex; align-items: center; gap: 6px; cursor: pointer;';
+      label.innerHTML = `
+        <input type="checkbox" class="type-checkbox" value="${type.key}" checked>
+        <span style="width:16px; height:16px; background:${type.fill}; border-radius:50%; border:2px solid ${type.border};"></span>
+        ${type.label}
+      `;
+      typeFiltersDiv.appendChild(label);
+    });
+
+    const savedTypes = localStorage.getItem('alertTypeFilters');
+    if (savedTypes) {
+      activeTypes = new Set(JSON.parse(savedTypes));
+      document.querySelectorAll('.type-checkbox').forEach(cb => {
+        cb.checked = activeTypes.has(cb.value);
+      });
+    }
+
     document.querySelectorAll('.type-checkbox').forEach(cb => {
-      cb.checked = activeTypes.has(cb.value);
+      cb.addEventListener('change', function() {
+        if (cb.checked) activeTypes.add(cb.value);
+        else activeTypes.delete(cb.value);
+        localStorage.setItem('alertTypeFilters', JSON.stringify([...activeTypes]));
+        applyFilters();
+      });
     });
-  }
 
-  document.querySelectorAll('.type-checkbox').forEach(cb => {
-    cb.addEventListener('change', function() {
-      if (cb.checked) activeTypes.add(cb.value);
-      else activeTypes.delete(cb.value);
-      localStorage.setItem('alertTypeFilters', JSON.stringify([...activeTypes]));
-      applyFilters();
-    });
-  });
+    // ────────────────────────────────────────────────
+    // APPLY FILTERS (type only – no time slider)
+    // ────────────────────────────────────────────────
+    function applyFilters() {
+      markersCluster.clearLayers();
 
-  // ────────────────────────────────────────────────
-  // TIME SLIDER – concise & fully working
-  // ────────────────────────────────────────────────
-  const timeSlider = document.createElement('input');
-  timeSlider.type = 'range';
-  timeSlider.id = 'time-slider';
-  timeSlider.min = 1;
-  timeSlider.step = 1;
-  timeSlider.style = 'width: 100%; margin: 8px 0 4px;';
-
-  const timeLabel = document.createElement('div');
-  timeLabel.id = 'time-label';
-  timeLabel.style = 'text-align: center; font-size: 0.9em; color: #1976d2;';
-
-  const sliderContainer = document.createElement('div');
-  sliderContainer.style = 'margin-top: 12px;';
-  sliderContainer.appendChild(timeSlider);
-  sliderContainer.appendChild(timeLabel);
-
-  typeFiltersDiv.parentNode.insertBefore(sliderContainer, typeFiltersDiv.nextSibling);
-
-  // ────────────────────────────────────────────────
-  // APPLY FILTERS (type + time)
-  // ────────────────────────────────────────────────
-  function applyFilters() {
-    markersCluster.clearLayers();
-
-    allMarkers.forEach(marker => {
-      const type = (marker.options.alertType || 'other').toLowerCase().trim();
-      const timestamp = marker.options.timestamp;
-
-      const typeMatch = activeTypes.size === 0 || activeTypes.has(type);
-
-      let timeMatch = true;
-      if (timeFilterDays !== Infinity && timestamp) {
-        const alertTime = parseGoogleDate(timestamp);
-        if (alertTime) {
-          const daysOld = (Date.now() - alertTime) / (1000 * 60 * 60 * 24);
-          timeMatch = daysOld <= timeFilterDays;
+      allMarkers.forEach(marker => {
+        const type = (marker.options.alertType || 'other').toLowerCase().trim();
+        const shouldShow = activeTypes.size === 0 || activeTypes.has(type);
+        if (shouldShow) {
+          marker.addTo(markersCluster);
         }
-      }
+      });
+    }
 
-      if (typeMatch && timeMatch) {
-        marker.addTo(markersCluster);
-      }
-    });
-  }
+    // ────────────────────────────────────────────────
+    // Parse Google Sheets timestamp – fixed + SA format
+    // ────────────────────────────────────────────────
+    function parseGoogleDate(str) {
+      if (!str || !str.startsWith('Date(')) return null;
+      const match = str.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
+      if (!match) return null;
+      const [, year, month0, day, hour, min, sec] = match.map(Number);
+      // month0 is 0-based → add 1 for JS Date
+      const date = new Date(year, month0, day, hour, min, sec);
+      // South African format: dd/mm/yyyy hh:mm:ss (24-hour)
+      const dd = String(date.getDate()).padStart(2, '0');
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const yyyy = date.getFullYear();
+      const hh = String(date.getHours()).padStart(2, '0');
+      const minStr = String(date.getMinutes()).padStart(2, '0');
+      const ss = String(date.getSeconds()).padStart(2, '0');
+      return `${dd}/${mm}/${yyyy} ${hh}:${minStr}:${ss}`;
+    }
 
-  // ────────────────────────────────────────────────
-  // Parse Google Sheets timestamp – fixed for 0-based month + SA format
-  // ────────────────────────────────────────────────
-  function parseGoogleDate(str) {
-    if (!str || !str.startsWith('Date(')) return null;
-    const match = str.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
-    if (!match) return null;
-    const [, year, month0, day, hour, min, sec] = match.map(Number);
-    // month0 is 0-based → add 1 for JavaScript Date
-    const date = new Date(year, month0, day, hour, min, sec);
-    // South African format: dd/mm/yyyy hh:mm:ss (24-hour)
-    const dd = String(date.getDate()).padStart(2, '0');
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const yyyy = date.getFullYear();
-    const hh = String(date.getHours()).padStart(2, '0');
-    const minStr = String(date.getMinutes()).padStart(2, '0');
-    const ss = String(date.getSeconds()).padStart(2, '0');
-    return `${dd}/${mm}/${yyyy} ${hh}:${minStr}:${ss}`;
-  }
+    // ────────────────────────────────────────────────
+    // LOAD MARKERS
+    // ────────────────────────────────────────────────
+    const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
 
-  // ────────────────────────────────────────────────
-  // LOAD MARKERS – with safe time handling
-  // ────────────────────────────────────────────────
-  const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
+    fetch(url)
+      .then(r => r.ok ? r.text() : Promise.reject('HTTP error'))
+      .then(text => {
+        let cleaned = text
+          .replace(/^\/\*(.|\n)*?\*\//, '')
+          .trim()
+          .replace(/^google\.visualization\.Query\.setResponse\(/, '')
+          .replace(/\);?$/, '');
 
-  fetch(url)
-    .then(r => r.ok ? r.text() : Promise.reject('HTTP error'))
-    .then(text => {
-      let cleaned = text
-        .replace(/^\/\*(.|\n)*?\*\//, '')
-        .trim()
-        .replace(/^google\.visualization\.Query\.setResponse\(/, '')
-        .replace(/\);?$/, '');
+        const data = JSON.parse(cleaned);
+        if (!data?.table?.rows) throw new Error('No data');
 
-      const data = JSON.parse(cleaned);
-      if (!data?.table?.rows) throw new Error('No data');
+        const rows = data.table.rows;
+        console.log(`Loaded ${rows.length} rows`);
 
-      const rows = data.table.rows;
-      console.log(`Loaded ${rows.length} rows`);
+        allMarkers = [];
 
-      allMarkers = [];
+        rows.forEach(row => {
+          const c = row.c || [];
 
-      let oldestDate = Infinity;
+          const timestamp     = c[0]?.v || '';
+          const reporter      = c[1]?.v || 'Anonymous';
+          const zone          = c[3]?.v || 'Unknown';
+          const spotDesc      = c[4]?.v || '';
+          const combinedCoords = c[5]?.v || '';
+          const alertTypeRaw  = c[6]?.v || 'Other';
+          let alertType       = alertTypeRaw.toLowerCase().trim();
+          const details       = c[7]?.v || '';
+          const photo         = c[8]?.v || '';
 
-      rows.forEach(row => {
-        const c = row.c || [];
-
-        const timestamp     = c[0]?.v || '';
-        const reporter      = c[1]?.v || 'Anonymous';
-        const zone          = c[3]?.v || 'Unknown';
-        const spotDesc      = c[4]?.v || '';
-        const combinedCoords = c[5]?.v || '';
-        const alertTypeRaw  = c[6]?.v || 'Other';
-        let alertType       = alertTypeRaw.toLowerCase().trim();
-        const details       = c[7]?.v || '';
-        const photo         = c[8]?.v || '';
-
-        let lat = null, lng = null;
-        if (combinedCoords && combinedCoords.includes(',')) {
-          const parts = combinedCoords.split(',').map(s => parseFloat(s.trim()));
-          if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-            lat = parts[0];
-            lng = parts[1];
+          let lat = null, lng = null;
+          if (combinedCoords && combinedCoords.includes(',')) {
+            const parts = combinedCoords.split(',').map(s => parseFloat(s.trim()));
+            if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+              lat = parts[0];
+              lng = parts[1];
+            }
           }
-        }
 
-        if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
-          const center = zoneCenters[zone] || [-30.85, 30.35];
-          lat = center[0];
-          lng = center[1];
-        }
+          if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+            const center = zoneCenters[zone] || [-30.85, 30.35];
+            lat = center[0];
+            lng = center[1];
+          }
 
-        let colorInfo = alertColors["other"];
-        let finalType = "other";
+          let colorInfo = alertColors["other"];
+          let finalType = "other";
 
-        if      (alertType.includes("general")         || alertType.includes("suspicious"))   { colorInfo = alertColors["general"];        finalType = "general"; }
-        else if (alertType.includes("red wave")        || alertType.includes("flood"))        { colorInfo = alertColors["red wave"];       finalType = "red wave"; }
-        else if (alertType.includes("amber blaze")     || alertType.includes("fire") || alertType.includes("hazard")) { colorInfo = alertColors["amber blaze"];    finalType = "amber blaze"; }
-        else if (alertType.includes("scam")            || alertType.includes("doorstep"))     { colorInfo = alertColors["scam"];           finalType = "scam"; }
-        else if (alertType.includes("electrical")      || alertType.includes("fault"))        { colorInfo = alertColors["electrical"];     finalType = "electrical"; }
-        else if (alertType.includes("water")           || alertType.includes("leak") || alertType.includes("interruption")) { colorInfo = alertColors["water"];        finalType = "water"; }
-        else if (alertType.includes("illegal dumping"))                                       { colorInfo = alertColors["illegal dumping"]; finalType = "illegal dumping"; }
-        else if (alertType.includes("municipal")       || alertType.includes("pothole") || alertType.includes("light") || alertType.includes("bush")) { colorInfo = alertColors["municipal"];     finalType = "municipal"; }
-        else {
-          colorInfo = alertColors["other"];
-          finalType = "other";
-        }
+          if      (alertType.includes("general")         || alertType.includes("suspicious"))   { colorInfo = alertColors["general"];        finalType = "general"; }
+          else if (alertType.includes("red wave")        || alertType.includes("flood"))        { colorInfo = alertColors["red wave"];       finalType = "red wave"; }
+          else if (alertType.includes("amber blaze")     || alertType.includes("fire") || alertType.includes("hazard")) { colorInfo = alertColors["amber blaze"];    finalType = "amber blaze"; }
+          else if (alertType.includes("scam")            || alertType.includes("doorstep"))     { colorInfo = alertColors["scam"];           finalType = "scam"; }
+          else if (alertType.includes("electrical")      || alertType.includes("fault"))        { colorInfo = alertColors["electrical"];     finalType = "electrical"; }
+          else if (alertType.includes("water")           || alertType.includes("leak") || alertType.includes("interruption")) { colorInfo = alertColors["water"];        finalType = "water"; }
+          else if (alertType.includes("illegal dumping"))                                       { colorInfo = alertColors["illegal dumping"]; finalType = "illegal dumping"; }
+          else if (alertType.includes("municipal")       || alertType.includes("pothole") || alertType.includes("light") || alertType.includes("bush")) { colorInfo = alertColors["municipal"];     finalType = "municipal"; }
+          else {
+            colorInfo = alertColors["other"];
+            finalType = "other";
+          }
 
-        const marker = L.circleMarker([lat, lng], {
-          radius: 10,
-          fillColor: colorInfo.fill,
-          color: colorInfo.border,
-          weight: 2,
-          opacity: 1,
-          fillOpacity: 0.85
+          const marker = L.circleMarker([lat, lng], {
+            radius: 10,
+            fillColor: colorInfo.fill,
+            color: colorInfo.border,
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.85
+          });
+
+          marker.addTo(markersCluster);
+
+          marker.bindPopup(`
+            <b>${alertTypeRaw} - ${zone}</b><br>
+            ${spotDesc}<br>
+            ${details.substring(0, 150)}${details.length > 150 ? '...' : ''}<br>
+            Reported: ${parseGoogleDate(timestamp) || timestamp || 'Unknown'}<br>
+            By: ${reporter}<br>
+            ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
+          `);
+
+          marker.options.alertType = finalType;
+
+          allMarkers.push(marker);
         });
 
-        marker.addTo(markersCluster);
-
-        marker.bindPopup(`
-          <b>${alertTypeRaw} - ${zone}</b><br>
-          ${spotDesc}<br>
-          ${details.substring(0, 150)}${details.length > 150 ? '...' : ''}<br>
-          Reported: ${parseGoogleDate(timestamp) || timestamp || 'Unknown'}<br>
-          By: ${reporter}<br>
-          ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
-        `);
-
-        marker.options.alertType = finalType;
-        marker.options.timestamp = timestamp;
-
-        // Track oldest timestamp
-        const alertTime = parseGoogleDate(timestamp);
-        if (alertTime && alertTime < oldestDate) {
-          oldestDate = alertTime;
-        }
-
-        allMarkers.push(marker);
-      });
-
-      // Setup time slider safely
-      let daysSinceOldest = 1;
-      if (oldestDate !== Infinity) {
-        daysSinceOldest = Math.max(1, Math.ceil((Date.now() - oldestDate) / (1000 * 60 * 60 * 24)));
-      }
-      timeSlider.max = daysSinceOldest;
-      timeSlider.value = daysSinceOldest; // default all time
-
-      // Restore saved value if valid
-      const savedDays = localStorage.getItem('timeFilterDays');
-      if (savedDays && !isNaN(savedDays) && Number(savedDays) >= 1 && Number(savedDays) <= daysSinceOldest) {
-        timeSlider.value = Number(savedDays);
-      }
-
-      // Update label & filter
-      const updateLabel = () => {
-        const val = Number(timeSlider.value);
-        timeLabel.textContent = val === daysSinceOldest ? 'All' : `${val}d`;
-        timeFilterDays = val;
-        localStorage.setItem('timeFilterDays', val);
         applyFilters();
-      };
 
-      timeSlider.addEventListener('input', updateLabel);
-      updateLabel(); // initial
-
-      applyFilters();
-
-      // Safe zoom with longer delay
-      setTimeout(() => {
-        const bounds = markersCluster.getBounds();
-        if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
-          map.fitBounds(bounds, { padding: [50, 50] });
-        } else {
-          map.setView([-30.85, 30.35], 12);
-        }
-      }, 400);
-    })
-    .catch(err => {
-      console.error('Error loading Sheet:', err);
-      document.body.innerHTML += `<p style="color:red; text-align:center; padding:20px;">Error loading map: ${err.message}</p>`;
-    });
+        setTimeout(() => {
+          const bounds = markersCluster.getBounds();
+          if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [50, 50] });
+          } else {
+            map.setView([-30.85, 30.35], 12);
+          }
+        }, 400);
+      })
+      .catch(err => {
+        console.error('Error loading Sheet:', err);
+        document.body.innerHTML += `<p style="color:red; text-align:center; padding:20px;">Error loading map: ${err.message}</p>`;
+      });
 
   // ────────────────────────────────────────────────
   // MAP CLICK → CONFIRM → COPY + TEMP MARKER
@@ -485,5 +414,3 @@
     }, 100);
   });
 </script>
-</body>
-</html>
