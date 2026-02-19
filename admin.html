@@ -55,152 +55,173 @@
   </div>
 
   <script>
-    // CHANGE THIS TO YOUR REAL APPS SCRIPT WEB APP URL
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyT27PxzMVY3KxMoiccBTipjQQ-44IYxQJqhuRB1v8tCXu7LUpMpcALeHltcl0RoZaW/exec";
+  // ────────────────────────────────────────────────
+  // YOUR DEPLOYED APPS SCRIPT WEB APP URL
+  // ────────────────────────────────────────────────
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyT27PxzMVY3KxMoiccBTipjQQ-44IYxQJqhuRB1v8tCXu7LUpMpcALeHltcl0RoZaW/exec";
 
-   // Get stored auth
-const storedAuth = JSON.parse(localStorage.getItem('adminAuth') || 'null');
+  // Get stored auth
+  const storedAuth = JSON.parse(localStorage.getItem('adminAuth') || 'null');
 
-// If no auth data at all → force redirect to login page
-if (!storedAuth || !storedAuth.email || !storedAuth.token) {
-  alert("Please log in from the main dashboard first.");
-  window.location.href = "/"; // or full URL e.g. "https://elysiumhomewatch.github.io/.../index.html"
-  // Stop script execution
-  throw new Error("No auth → redirecting");
-}
-
-// Now safe to proceed with verification
-async function verifyAdminAuth() {
-  const params = new URLSearchParams({
-    action: "check-auth",
-    email: storedAuth.email.trim(),
-    token: storedAuth.token.trim()
-  });
-
-  try {
-    const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
-    const data = await response.json();
-
-    console.log("Auth response from server:", data); // ← keep this for debugging
-
-    if (!data.success || !data.isAdmin) {
-      alert("Session invalid or expired. Please log in again.");
-      localStorage.removeItem('adminAuth');
-      window.location.href = "/";
-      return false;
-    }
-
-    document.getElementById('loading').style.display = 'none';
-    return true;
-  } catch (err) {
-    console.error("Auth check failed:", err);
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('error').textContent = "Failed to verify admin access. Try again.";
-    document.getElementById('error').style.display = 'block';
-    return false;
+  // If no valid auth data → force redirect to login
+  if (!storedAuth || !storedAuth.email || !storedAuth.token) {
+    alert("Please log in from the main dashboard first.");
+    window.location.href = "/"; // adjust to your real index.html path if needed
   }
-}
 
-    // Load alerts (only if auth is valid)
-    async function loadAlerts() {
-      const isValid = await verifyAdmin();
-      if (!isValid) return;
-
-      try {
-        const response = await fetch(`${SCRIPT_URL}?action=get-alerts`);
-        const data = await response.json();
-
-        if (!data.success) {
-          document.getElementById('error').textContent = data.error || "Failed to load alerts";
-          document.getElementById('error').style.display = 'block';
-          return;
-        }
-
-        const tbody = document.getElementById('alert-table-body');
-        tbody.innerHTML = '';
-
-        data.alerts.forEach(alert => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${alert.timestamp || '—'}</td>
-            <td>${alert.type}</td>
-            <td>${alert.zone}</td>
-            <td>${alert.reporter}</td>
-            <td>
-              <select class="status-select" data-id="${alert.row}">
-                <option value="pending" ${alert.status === 'pending' ? 'selected' : ''}>Pending</option>
-                <option value="in-progress" ${alert.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
-                <option value="resolved" ${alert.status === 'resolved' ? 'selected' : ''}>Resolved</option>
-              </select>
-            </td>
-            <td><button class="view-btn" data-lat="${alert.lat}" data-lng="${alert.lng}">View on Map</button></td>
-          `;
-          tbody.appendChild(tr);
-        });
-
-        // Status change handler
-        document.querySelectorAll('.status-select').forEach(select => {
-          select.addEventListener('change', async function() {
-            const row = this.dataset.id;
-            const newStatus = this.value;
-
-            if (confirm(`Change status to "${newStatus}"?`)) {
-              const params = new URLSearchParams({
-                action: "update-status",
-                row: row,
-                status: newStatus,
-                email: storedAuth.email,
-                token: storedAuth.token
-              });
-
-              const response = await fetch(`${SCRIPT_URL}?${params}`);
-              const result = await response.json();
-
-              if (result.success) {
-                alert("Status updated!");
-              } else {
-                alert("Failed to update: " + (result.error || "Unknown error"));
-                this.value = alert.status; // revert
-              }
-            }
-          });
-        });
-
-        // View on map
-        document.querySelectorAll('.view-btn').forEach(btn => {
-          btn.addEventListener('click', function() {
-            const lat = parseFloat(this.dataset.lat);
-            const lng = parseFloat(this.dataset.lng);
-            if (!isNaN(lat) && !isNaN(lng)) {
-              map.setView([lat, lng], 16);
-              // Optional: open popup or highlight marker
-            }
-          });
-        });
-
-      } catch (err) {
-        console.error("Load alerts failed", err);
-        document.getElementById('error').textContent = "Failed to load alerts";
-        document.getElementById('error').style.display = 'block';
-      }
-    }
-
-    // Logout
-    document.getElementById('logout').addEventListener('click', () => {
-      if (confirm("Logout from admin panel?")) {
-        localStorage.removeItem('adminAuth');
-        window.location.href = "/";
-      }
+  // Verify authentication server-side
+  async function verifyAdminAuth() {
+    const params = new URLSearchParams({
+      action: "check-auth",
+      email: storedAuth.email.trim(),
+      token: storedAuth.token.trim()
     });
 
-    // Initialize map (placeholder – can show alerts later)
-    const map = L.map('map').setView([-30.85, 30.35], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    }).addTo(map);
+    try {
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+      const data = await response.json();
 
-    // Load data after auth check
-    loadAlerts();
-  </script>
+      console.log("Server auth response:", data); // ← debug line – keep for now
+
+      if (!data.success || !data.isAdmin) {
+        alert("Session invalid or expired. Please log in again.");
+        localStorage.removeItem('adminAuth');
+        window.location.href = "/";
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error("Auth check failed:", err);
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').textContent = "Failed to verify admin access. Try again.";
+      document.getElementById('error').style.display = 'block';
+      return false;
+    }
+  }
+
+  // Load and display alerts (only after auth check passes)
+  async function loadAlerts() {
+    document.getElementById('loading').textContent = "Verifying access...";
+
+    const isAuthenticated = await verifyAdminAuth();
+    if (!isAuthenticated) return;
+
+    document.getElementById('loading').textContent = "Loading alerts...";
+
+    try {
+      const params = new URLSearchParams({
+        action: "get-alerts",
+        email: storedAuth.email.trim(),
+        token: storedAuth.token.trim()
+      });
+
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || "Failed to load alerts");
+      }
+
+      const tbody = document.getElementById('alert-table-body');
+      tbody.innerHTML = '';
+
+      data.alerts.forEach(alert => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${alert.timestamp || '—'}</td>
+          <td>${alert.type || 'Other'}</td>
+          <td>${alert.zone || 'Unknown'}</td>
+          <td>${alert.reporter || 'Anonymous'}</td>
+          <td>
+            <select class="status-select" data-row="${alert.row}">
+              <option value="pending" ${alert.status === 'pending' ? 'selected' : ''}>Pending</option>
+              <option value="in-progress" ${alert.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+              <option value="resolved" ${alert.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+            </select>
+          </td>
+          <td>
+            <button class="view-btn" data-lat="${alert.lat || ''}" data-lng="${alert.lng || ''}">View on Map</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Handle status changes
+      document.querySelectorAll('.status-select').forEach(select => {
+        select.addEventListener('change', async function() {
+          const row = this.dataset.row;
+          const newStatus = this.value;
+
+          if (!confirm(`Update status to "${newStatus}"?`)) {
+            this.value = this.dataset.current || 'pending';
+            return;
+          }
+
+          const params = new URLSearchParams({
+            action: "update-status",
+            row: row,
+            status: newStatus,
+            email: storedAuth.email.trim(),
+            token: storedAuth.token.trim()
+          });
+
+          try {
+            const resp = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+            const result = await resp.json();
+
+            if (result.success) {
+              alert("Status updated successfully.");
+            } else {
+              alert("Update failed: " + (result.error || "Unknown error"));
+              this.value = this.dataset.current || 'pending';
+            }
+          } catch (err) {
+            alert("Network error during update.");
+            this.value = this.dataset.current || 'pending';
+          }
+        });
+      });
+
+      // Handle "View on Map"
+      document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const lat = parseFloat(this.dataset.lat);
+          const lng = parseFloat(this.dataset.lng);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            map.setView([lat, lng], 15);
+          } else {
+            alert("No location data for this alert.");
+          }
+        });
+      });
+
+      document.getElementById('loading').style.display = 'none';
+
+    } catch (err) {
+      console.error("Error loading alerts:", err);
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').textContent = "Could not load alerts: " + err.message;
+      document.getElementById('error').style.display = 'block';
+    }
+  }
+
+  // Logout handler
+  document.getElementById('logout').addEventListener('click', () => {
+    if (confirm("Are you sure you want to logout?")) {
+      localStorage.removeItem('adminAuth');
+      window.location.href = "/";
+    }
+  });
+
+  // Initialize map
+  const map = L.map('map').setView([-30.85, 30.35], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
+  // Start loading
+  loadAlerts();
+</script>
 </body>
 </html>
