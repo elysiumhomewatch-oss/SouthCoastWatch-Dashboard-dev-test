@@ -15,91 +15,18 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: #f8f9fa;
-    }
-    h1 {
-      text-align: center;
-      color: #1a3c6d;
-      margin-bottom: 10px;
-    }
-    #map {
-      height: 600px;
-      margin: 20px auto;
-      max-width: 1200px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      position: relative;
-    }
-    .leaflet-popup-content {
-      margin: 0 !important;
-      padding: 8px !important;
-      min-width: 240px;
-    }
-    #refresh-btn-container {
-      text-align: center;
-      margin: 20px 0;
-    }
-    #refresh-btn {
-      padding: 12px 24px;
-      font-size: 1.1em;
-      background: #1976d2;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    #map-type-selector {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 1000;
-      background: white;
-      padding: 8px 12px;
-      border-radius: 6px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      font-size: 0.95em;
-    }
-    #legend {
-      position: absolute;
-      bottom: 10px;
-      right: 10px;
-      z-index: 1000;
-      max-width: 280px;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-      overflow: hidden;
-    }
-    #legend summary {
-      padding: 10px 14px;
-      font-weight: bold;
-      background: #f5f5f5;
-      cursor: pointer;
-      border-radius: 8px 8px 0 0;
-    }
-    #legend div {
-      padding: 12px;
-      font-size: 0.95em;
-      line-height: 1.5;
-    }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-    .legend-color {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      border: 2px solid;
-      margin-right: 8px;
-    }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
+    h1 { text-align: center; color: #1a3c6d; margin-bottom: 10px; }
+    #map { height: 600px; margin: 20px auto; max-width: 1200px; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: relative; }
+    .leaflet-popup-content { margin: 0 !important; padding: 8px !important; min-width: 240px; }
+    #refresh-btn-container { text-align: center; margin: 20px 0; }
+    #refresh-btn { padding: 12px 24px; font-size: 1.1em; background: #1976d2; color: white; border: none; border-radius: 8px; cursor: pointer; }
+    #map-type-selector { position: absolute; top: 10px; right: 10px; z-index: 1000; background: white; padding: 8px 12px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); font-size: 0.95em; }
+    #legend { position: absolute; bottom: 10px; right: 10px; z-index: 1000; max-width: 280px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); overflow: hidden; }
+    #legend summary { padding: 10px 14px; font-weight: bold; background: #f5f5f5; cursor: pointer; border-radius: 8px 8px 0 0; }
+    #legend div { padding: 12px; font-size: 0.95em; line-height: 1.5; }
+    .legend-item { display: flex; align-items: center; margin-bottom: 6px; }
+    .legend-color { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 2px solid; margin-right: 8px; }
   </style>
 </head>
 <body>
@@ -112,7 +39,7 @@
     </button>
   </div>
 
-  <!-- Collapsible Filters Panel (only alert types) -->
+  <!-- Collapsible Filters Panel -->
   <details id="filters" style="max-width: 800px; margin: 0 auto 20px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden;">
     <summary style="padding: 14px; font-weight: bold; background: #e3f2fd; cursor: pointer; font-size: 1.1em; border-radius: 8px;">
       Filter by Alert Type
@@ -141,15 +68,15 @@
     <details id="legend">
       <summary>Legend: Alert Types</summary>
       <div>
-        <div class="legend-item"><span class="legend-color" style="background:#d32f2f; border-color:#b71c1c;"></span>General / Suspicious</div>
-        <div class="legend-item"><span class="legend-color" style="background:#1976d2; border-color:#0d47a1;"></span>Red Wave / Flood</div>
-        <div class="legend-item"><span class="legend-color" style="background:#f57c00; border-color:#ef6c00;"></span>Amber Blaze / Fire / Smoke</div>
-        <div class="legend-item"><span class="legend-color" style="background:#7b1fa2; border-color:#4a148c;"></span>Scam / Doorstep concern</div>
-        <div class="legend-item"><span class="legend-color" style="background:#fbc02d; border-color:#f9a825;"></span>Electrical fault</div>
-        <div class="legend-item"><span class="legend-color" style="background:#42a5f5; border-color:#1976d2;"></span>Water leak / interruption</div>
-        <div class="legend-item"><span class="legend-color" style="background:#795548; border-color:#4e342e;"></span>Dumping / Bin overflow</div>
-        <div class="legend-item"><span class="legend-color" style="background:#757575; border-color:#424242;"></span>Other municipal</div>
-        <div class="legend-item"><span class="legend-color" style="background:#424242; border-color:#212121;"></span>Other / Unknown</div>
+        <div class="legend-item"><span class="legend-color" style="background:#d32f2f; border-color:#b71c1c;"></span>General/Suspicious</div>
+        <div class="legend-item"><span class="legend-color" style="background:#1976d2; border-color:#0d47a1;"></span>Red Wave (Flood)</div>
+        <div class="legend-item"><span class="legend-color" style="background:#f57c00; border-color:#ef6c00;"></span>Amber Blaze (Fire Hazard)</div>
+        <div class="legend-item"><span class="legend-color" style="background:#7b1fa2; border-color:#4a148c;"></span>Scam/Doorstep</div>
+        <div class="legend-item"><span class="legend-color" style="background:#fbc02d; border-color:#f9a825;"></span>Electrical Fault</div>
+        <div class="legend-item"><span class="legend-color" style="background:#42a5f5; border-color:#1976d2;"></span>Water Leak/Interruption</div>
+        <div class="legend-item"><span class="legend-color" style="background:#795548; border-color:#4e342e;"></span>Illegal Dumping</div>
+        <div class="legend-item"><span class="legend-color" style="background:#757575; border-color:#424242;"></span>Municipal (Potholes/Lights/Bushes)</div>
+        <div class="legend-item"><span class="legend-color" style="background:#424242; border-color:#212121;"></span>Other</div>
       </div>
     </details>
   </div>
@@ -165,8 +92,8 @@
     "scam":            { fill: "#7b1fa2", border: "#4a148c" },
     "electrical":      { fill: "#fbc02d", border: "#f9a825" },
     "water":           { fill: "#42a5f5", border: "#1976d2" },
-    "dumping":         { fill: "#795548", border: "#4e342e" },  // Illegal Dumping
-    "other municipal": { fill: "#757575", border: "#424242" },
+    "illegal dumping": { fill: "#795548", border: "#4e342e" },
+    "municipal":       { fill: "#757575", border: "#424242" },
     "other":           { fill: "#424242", border: "#212121" }
   };
 
@@ -183,18 +110,18 @@
   };
 
   // ────────────────────────────────────────────────
-  // ALERT TYPE CONFIG FOR FILTERS & LEGEND (matches form exactly)
+  // ALERT TYPE CONFIG – exact match to new form options
   // ────────────────────────────────────────────────
   const alertTypesConfig = [
-    { key: "general",         label: "General/Suspicious",          fill: "#d32f2f", border: "#b71c1c", keywords: ["general", "suspicious"] },
-    { key: "red wave",        label: "Red Wave (Flood)",            fill: "#1976d2", border: "#0d47a1", keywords: ["red wave", "flood"] },
-    { key: "amber blaze",     label: "Amber Blaze (Fire Hazard)",   fill: "#f57c00", border: "#ef6c00", keywords: ["amber blaze", "fire", "smoke", "hazard"] },
-    { key: "scam",            label: "Scam/Doorstep",               fill: "#7b1fa2", border: "#4a148c", keywords: ["scam", "doorstep"] },
-    { key: "electrical",      label: "Electrical Fault",            fill: "#fbc02d", border: "#f9a825", keywords: ["electrical", "fault"] },
-    { key: "water",           label: "Water Leak/Interruption",     fill: "#42a5f5", border: "#1976d2", keywords: ["water", "leak", "interruption"] },
-    { key: "dumping",         label: "Illegal Dumping",             fill: "#795548", border: "#4e342e", keywords: ["dumping", "illegal dumping", "bin", "overflow", "rubbish", "trash", "garbage"] },
-    { key: "other municipal", label: "Other Municipal (Potholes/Lights/Bushes)", fill: "#757575", border: "#424242", keywords: ["other municipal", "pothole", "light", "bush", "municipal"] },
-    { key: "other",           label: "Other",                       fill: "#424242", border: "#212121", keywords: ["other"] }
+    { key: "general",         label: "General/Suspicious",          fill: "#d32f2f", border: "#b71c1c" },
+    { key: "red wave",        label: "Red Wave (Flood)",            fill: "#1976d2", border: "#0d47a1" },
+    { key: "amber blaze",     label: "Amber Blaze (Fire Hazard)",   fill: "#f57c00", border: "#ef6c00" },
+    { key: "scam",            label: "Scam/Doorstep",               fill: "#7b1fa2", border: "#4a148c" },
+    { key: "electrical",      label: "Electrical Fault",            fill: "#fbc02d", border: "#f9a825" },
+    { key: "water",           label: "Water Leak/Interruption",     fill: "#42a5f5", border: "#1976d2" },
+    { key: "illegal dumping", label: "Illegal Dumping",             fill: "#795548", border: "#4e342e" },
+    { key: "municipal",       label: "Municipal (Potholes/Lights/Bushes)", fill: "#757575", border: "#424242" },
+    { key: "other",           label: "Other",                       fill: "#424242", border: "#212121" }
   ];
 
   // ────────────────────────────────────────────────
@@ -243,7 +170,7 @@
   let activeTypes = new Set(alertTypesConfig.map(t => t.key));
 
   // ────────────────────────────────────────────────
-  // CREATE CHECKBOXES (labels now match form exactly)
+  // CREATE CHECKBOXES – exact form labels
   // ────────────────────────────────────────────────
   const typeFiltersDiv = document.getElementById('type-filters');
   alertTypesConfig.forEach(type => {
@@ -275,28 +202,15 @@
   });
 
   // ────────────────────────────────────────────────
-  // APPLY FILTERS – using normalized + keyword matching
+  // APPLY FILTERS – exact key matching
   // ────────────────────────────────────────────────
   function applyFilters() {
     markersCluster.clearLayers();
 
     allMarkers.forEach(marker => {
-      let type = (marker.options.alertType || 'other').toLowerCase().trim();
+      const type = (marker.options.alertType || 'other').toLowerCase().trim();
 
-      // Normalize for matching
-      type = type
-        .replace(/\s*\(.*?\)\s*/g, '')     // remove (Potholes/Lights/Bushes)
-        .replace(/\//g, ' ')               // Water Leak/Interruption → water leak interruption
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      const shouldShow = activeTypes.size === 0 ||  // show all if nothing selected
-        [...activeTypes].some(key => {
-          const config = alertTypesConfig.find(c => c.key === key);
-          if (!config) return false;
-
-          return config.keywords.some(kw => type.includes(kw.toLowerCase()));
-        });
+      const shouldShow = activeTypes.size === 0 || activeTypes.has(type);
 
       if (shouldShow) {
         marker.addTo(markersCluster);
@@ -305,7 +219,7 @@
   }
 
   // ────────────────────────────────────────────────
-  // LOAD MARKERS – with improved classification
+  // LOAD MARKERS – exact form options handling
   // ────────────────────────────────────────────────
   const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
@@ -340,15 +254,6 @@
         const details       = c[7]?.v || '';
         const photo         = c[8]?.v || '';
 
-        // Special handling for "Illegal Dumping" (form option)
-        if (alertType.includes("illegal dumping")) {
-          alertType = "dumping";
-        }
-        // Bin overflowing / overflow / rubbish → dumping
-        else if (alertType.includes("bin") || alertType.includes("overflow") || alertType.includes("rubbish") || alertType.includes("trash") || alertType.includes("garbage")) {
-          alertType = "dumping";
-        }
-
         let lat = null, lng = null;
         if (combinedCoords && combinedCoords.includes(',')) {
           const parts = combinedCoords.split(',').map(s => parseFloat(s.trim()));
@@ -364,33 +269,21 @@
           lng = center[1];
         }
 
-        let colorInfo = alertColors["other"]; // default to gray
+        let colorInfo = alertColors["other"];
         const descLower = details.toLowerCase();
 
-        // Color assignment (using processed alertType)
-        if      (alertType.includes("general")     || alertType.includes("suspicious"))   colorInfo = alertColors["general"];
-        else if (alertType.includes("red wave")    || alertType.includes("flood"))        colorInfo = alertColors["red wave"];
-        else if (alertType.includes("amber blaze") || alertType.includes("fire") || alertType.includes("smoke") || alertType.includes("hazard")) colorInfo = alertColors["amber blaze"];
-        else if (alertType.includes("scam")        || alertType.includes("doorstep"))     colorInfo = alertColors["scam"];
-        else if (alertType.includes("electrical")  || alertType.includes("fault"))        colorInfo = alertColors["electrical"];
-        else if (alertType.includes("water")       || alertType.includes("leak") || alertType.includes("interruption")) colorInfo = alertColors["water"];
-        else if (alertType.includes("dumping")     || alertType.includes("illegal dumping") || alertType.includes("bin") || alertType.includes("overflow") || alertType.includes("rubbish") || alertType.includes("trash") || alertType.includes("garbage")) colorInfo = alertColors["dumping"];
-        else if (alertType.includes("other municipal") || alertType.includes("pothole") || alertType.includes("light") || alertType.includes("bush") || alertType.includes("municipal")) colorInfo = alertColors["other municipal"];
+        // Exact match to form options (no description fallback for classification)
+        if      (alertType.includes("general")         || alertType.includes("suspicious"))   colorInfo = alertColors["general"];        alertType = "general";
+        else if (alertType.includes("red wave")        || alertType.includes("flood"))        colorInfo = alertColors["red wave"];       alertType = "red wave";
+        else if (alertType.includes("amber blaze")     || alertType.includes("fire") || alertType.includes("hazard")) colorInfo = alertColors["amber blaze"];    alertType = "amber blaze";
+        else if (alertType.includes("scam")            || alertType.includes("doorstep"))     colorInfo = alertColors["scam"];           alertType = "scam";
+        else if (alertType.includes("electrical")      || alertType.includes("fault"))        colorInfo = alertColors["electrical"];     alertType = "electrical";
+        else if (alertType.includes("water")           || alertType.includes("leak") || alertType.includes("interruption")) colorInfo = alertColors["water"];        alertType = "water";
+        else if (alertType.includes("illegal dumping") || alertType.includes("dumping"))      colorInfo = alertColors["illegal dumping"]; alertType = "illegal dumping";
+        else if (alertType.includes("municipal")       || alertType.includes("pothole") || alertType.includes("light") || alertType.includes("bush")) colorInfo = alertColors["municipal"];     alertType = "municipal";
         else {
-          // "Other" with description fallback
-          if (descLower.includes("bin") || descLower.includes("overflow") || descLower.includes("rubbish") || descLower.includes("trash") || descLower.includes("garbage")) {
-            colorInfo = alertColors["dumping"];
-            alertType = "dumping";
-          } else if (descLower.includes("pothole") || descLower.includes("light") || descLower.includes("bush") || descLower.includes("municipal")) {
-            colorInfo = alertColors["other municipal"];
-            alertType = "other municipal";
-          } else if (descLower.includes("water") || descLower.includes("leak") || descLower.includes("interruption")) {
-            colorInfo = alertColors["water"];
-            alertType = "water";
-          } else {
-            colorInfo = alertColors["other"];
-            alertType = "other";
-          }
+          colorInfo = alertColors["other"];
+          alertType = "other";
         }
 
         const marker = L.circleMarker([lat, lng], {
@@ -413,11 +306,7 @@
           ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
         `);
 
-        // Store normalized alertType for filtering
         marker.options.alertType = alertType;
-
-        // Debug log – remove later if not needed
-        console.log(`Row alertTypeRaw: "${alertTypeRaw}" → processed as "${alertType}" → stored as "${marker.options.alertType}"`);
 
         allMarkers.push(marker);
       });
@@ -429,7 +318,6 @@
         if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
           map.fitBounds(bounds, { padding: [50, 50] });
         } else {
-          console.warn('No valid bounds – falling back to default view');
           map.setView([-30.85, 30.35], 12);
         }
       }, 200);
