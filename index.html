@@ -110,7 +110,7 @@
   };
 
   // ────────────────────────────────────────────────
-  // ALERT TYPE CONFIG – exact match to new form options
+  // ALERT TYPE CONFIG – exact match to your new form options
   // ────────────────────────────────────────────────
   const alertTypesConfig = [
     { key: "general",         label: "General/Suspicious",          fill: "#d32f2f", border: "#b71c1c" },
@@ -170,7 +170,7 @@
   let activeTypes = new Set(alertTypesConfig.map(t => t.key));
 
   // ────────────────────────────────────────────────
-  // CREATE CHECKBOXES – exact form labels
+  // CREATE CHECKBOXES – labels match form exactly
   // ────────────────────────────────────────────────
   const typeFiltersDiv = document.getElementById('type-filters');
   alertTypesConfig.forEach(type => {
@@ -209,9 +209,7 @@
 
     allMarkers.forEach(marker => {
       const type = (marker.options.alertType || 'other').toLowerCase().trim();
-
       const shouldShow = activeTypes.size === 0 || activeTypes.has(type);
-
       if (shouldShow) {
         marker.addTo(markersCluster);
       }
@@ -219,7 +217,7 @@
   }
 
   // ────────────────────────────────────────────────
-  // LOAD MARKERS – exact form options handling
+  // LOAD MARKERS – classification matches form options exactly
   // ────────────────────────────────────────────────
   const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
@@ -270,20 +268,20 @@
         }
 
         let colorInfo = alertColors["other"];
-        const descLower = details.toLowerCase();
+        let finalType = "other";
 
-        // Exact match to form options (no description fallback for classification)
-        if      (alertType.includes("general")         || alertType.includes("suspicious"))   colorInfo = alertColors["general"];        alertType = "general";
-        else if (alertType.includes("red wave")        || alertType.includes("flood"))        colorInfo = alertColors["red wave"];       alertType = "red wave";
-        else if (alertType.includes("amber blaze")     || alertType.includes("fire") || alertType.includes("hazard")) colorInfo = alertColors["amber blaze"];    alertType = "amber blaze";
-        else if (alertType.includes("scam")            || alertType.includes("doorstep"))     colorInfo = alertColors["scam"];           alertType = "scam";
-        else if (alertType.includes("electrical")      || alertType.includes("fault"))        colorInfo = alertColors["electrical"];     alertType = "electrical";
-        else if (alertType.includes("water")           || alertType.includes("leak") || alertType.includes("interruption")) colorInfo = alertColors["water"];        alertType = "water";
-        else if (alertType.includes("illegal dumping") || alertType.includes("dumping"))      colorInfo = alertColors["illegal dumping"]; alertType = "illegal dumping";
-        else if (alertType.includes("municipal")       || alertType.includes("pothole") || alertType.includes("light") || alertType.includes("bush")) colorInfo = alertColors["municipal"];     alertType = "municipal";
+        // Exact match to form options (no description fallback)
+        if      (alertType.includes("general")         || alertType.includes("suspicious"))   { colorInfo = alertColors["general"];        finalType = "general"; }
+        else if (alertType.includes("red wave")        || alertType.includes("flood"))        { colorInfo = alertColors["red wave"];       finalType = "red wave"; }
+        else if (alertType.includes("amber blaze")     || alertType.includes("fire") || alertType.includes("hazard")) { colorInfo = alertColors["amber blaze"];    finalType = "amber blaze"; }
+        else if (alertType.includes("scam")            || alertType.includes("doorstep"))     { colorInfo = alertColors["scam"];           finalType = "scam"; }
+        else if (alertType.includes("electrical")      || alertType.includes("fault"))        { colorInfo = alertColors["electrical"];     finalType = "electrical"; }
+        else if (alertType.includes("water")           || alertType.includes("leak") || alertType.includes("interruption")) { colorInfo = alertColors["water"];        finalType = "water"; }
+        else if (alertType.includes("illegal dumping"))                                       { colorInfo = alertColors["illegal dumping"]; finalType = "illegal dumping"; }
+        else if (alertType.includes("municipal")       || alertType.includes("pothole") || alertType.includes("light") || alertType.includes("bush")) { colorInfo = alertColors["municipal"];     finalType = "municipal"; }
         else {
           colorInfo = alertColors["other"];
-          alertType = "other";
+          finalType = "other";
         }
 
         const marker = L.circleMarker([lat, lng], {
@@ -306,7 +304,7 @@
           ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
         `);
 
-        marker.options.alertType = alertType;
+        marker.options.alertType = finalType;
 
         allMarkers.push(marker);
       });
