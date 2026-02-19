@@ -4,16 +4,14 @@
   <title>SouthCoastWatch Community Dashboard</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  
+ 
   <!-- Leaflet core -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
   <!-- MarkerCluster plugin -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-
   <style>
     body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
     h1 { text-align: center; color: #1a3c6d; margin-bottom: 10px; }
@@ -39,15 +37,12 @@
   </style>
 </head>
 <body>
-
   <h1>🌊 SouthCoastWatch Community Dashboard</h1>
-
   <div id="refresh-btn-container">
     <button id="refresh-btn" onclick="location.reload()">
       Refresh Map (check for new alerts)
     </button>
   </div>
-
   <!-- Collapsible Filters Panel -->
   <details id="filters" style="max-width: 800px; margin: 0 auto 20px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden;">
     <summary style="padding: 14px; font-weight: bold; background: #e3f2fd; cursor: pointer; font-size: 1.1em; border-radius: 8px;">
@@ -57,25 +52,21 @@
       <div id="type-filters" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px;">
         <!-- Checkboxes generated here -->
       </div>
-
       <div class="time-radio-group">
         <label><input type="radio" name="timeFilter" value="all" checked> All time</label>
         <label><input type="radio" name="timeFilter" value="7"> Last 7 days</label>
         <label><input type="radio" name="timeFilter" value="3"> Last 3 days</label>
         <label><input type="radio" name="timeFilter" value="1"> Last 24 hours</label>
       </div>
-
       <div style="margin-top: 16px; text-align: center;">
         <label style="cursor: pointer; font-size: 0.95em;">
           <input type="checkbox" id="active-only" checked>
           Show only active / unresolved alerts
         </label>
       </div>
-
       <button id="reset-filters">Reset All Filters</button>
     </div>
   </details>
-
   <!-- Map with controls -->
   <div id="map">
     <div id="map-type-selector">
@@ -86,9 +77,7 @@
         <option value="terrain">Terrain</option>
         <option value="dark">Dark</option>
       </select>
-      
     </div>
-
     <details id="legend">
       <summary>Legend: Alert Types</summary>
       <div>
@@ -104,50 +93,46 @@
       </div>
     </details>
   </div>
-
   <script>
     // ────────────────────────────────────────────────
     // ALERT COLORS
     // ────────────────────────────────────────────────
     const alertColors = {
-      "general":         { fill: "#d32f2f", border: "#b71c1c" },
-      "red wave":        { fill: "#1976d2", border: "#0d47a1" },
-      "amber blaze":     { fill: "#f57c00", border: "#ef6c00" },
-      "scam":            { fill: "#7b1fa2", border: "#4a148c" },
-      "electrical":      { fill: "#fbc02d", border: "#f9a825" },
-      "water":           { fill: "#42a5f5", border: "#1976d2" },
+      "general": { fill: "#d32f2f", border: "#b71c1c" },
+      "red wave": { fill: "#1976d2", border: "#0d47a1" },
+      "amber blaze": { fill: "#f57c00", border: "#ef6c00" },
+      "scam": { fill: "#7b1fa2", border: "#4a148c" },
+      "electrical": { fill: "#fbc02d", border: "#f9a825" },
+      "water": { fill: "#42a5f5", border: "#1976d2" },
       "illegal dumping": { fill: "#795548", border: "#4e342e" },
-      "municipal":       { fill: "#757575", border: "#424242" },
-      "other":           { fill: "#424242", border: "#212121" }
+      "municipal": { fill: "#757575", border: "#424242" },
+      "other": { fill: "#424242", border: "#212121" }
     };
-
     // ────────────────────────────────────────────────
     // ZONE FALLBACK CENTERS
     // ────────────────────────────────────────────────
     const zoneCenters = {
       "Highway West": [-30.464248, 30.637618],
-      "Sea East":     [-30.90,     30.45],
-      "River North":  [-30.82,     30.38],
-      "River South":  [-30.88,     30.32],
-      "Central":      [-30.85,     30.35],
-      "Unknown":      [-30.85,     30.35]
+      "Sea East": [-30.90, 30.45],
+      "River North": [-30.82, 30.38],
+      "River South": [-30.88, 30.32],
+      "Central": [-30.85, 30.35],
+      "Unknown": [-30.85, 30.35]
     };
-
     // ────────────────────────────────────────────────
     // ALERT TYPE CONFIG
     // ────────────────────────────────────────────────
     const alertTypesConfig = [
-      { key: "general",         label: "General/Suspicious",          fill: "#d32f2f", border: "#b71c1c" },
-      { key: "red wave",        label: "Red Wave (Flood)",            fill: "#1976d2", border: "#0d47a1" },
-      { key: "amber blaze",     label: "Amber Blaze (Fire Hazard)",   fill: "#f57c00", border: "#ef6c00" },
-      { key: "scam",            label: "Scam/Doorstep",               fill: "#7b1fa2", border: "#4a148c" },
-      { key: "electrical",      label: "Electrical Fault",            fill: "#fbc02d", border: "#f9a825" },
-      { key: "water",           label: "Water Leak/Interruption",     fill: "#42a5f5", border: "#1976d2" },
-      { key: "illegal dumping", label: "Illegal Dumping",             fill: "#795548", border: "#4e342e" },
-      { key: "municipal",       label: "Municipal (Potholes/Lights/Bushes)", fill: "#757575", border: "#424242" },
-      { key: "other",           label: "Other",                       fill: "#424242", border: "#212121" }
+      { key: "general", label: "General/Suspicious", fill: "#d32f2f", border: "#b71c1c" },
+      { key: "red wave", label: "Red Wave (Flood)", fill: "#1976d2", border: "#0d47a1" },
+      { key: "amber blaze", label: "Amber Blaze (Fire Hazard)", fill: "#f57c00", border: "#ef6c00" },
+      { key: "scam", label: "Scam/Doorstep", fill: "#7b1fa2", border: "#4a148c" },
+      { key: "electrical", label: "Electrical Fault", fill: "#fbc02d", border: "#f9a825" },
+      { key: "water", label: "Water Leak/Interruption", fill: "#42a5f5", border: "#1976d2" },
+      { key: "illegal dumping", label: "Illegal Dumping", fill: "#795548", border: "#4e342e" },
+      { key: "municipal", label: "Municipal (Potholes/Lights/Bushes)", fill: "#757575", border: "#424242" },
+      { key: "other", label: "Other", fill: "#424242", border: "#212121" }
     ];
-
     // ────────────────────────────────────────────────
     // INITIALIZE MAP & CLUSTER GROUP
     // ────────────────────────────────────────────────
@@ -156,7 +141,6 @@
       zoom: 12,
       maxZoom: 19
     });
-
     const markersCluster = L.markerClusterGroup({
       maxClusterRadius: 40,
       spiderfyOnMaxZoom: true,
@@ -184,7 +168,6 @@
       }
     });
     map.addLayer(markersCluster);
-
     // Basemap layers
     const basemaps = {
       osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19 }),
@@ -192,11 +175,9 @@
       terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors, SRTM | &copy; OpenTopoMap', maxZoom: 17 }),
       dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19 })
     };
-
     const savedBasemap = localStorage.getItem('preferredBasemap') || 'osm';
     basemaps[savedBasemap].addTo(map);
     document.getElementById('basemap').value = savedBasemap;
-
     document.getElementById('basemap').addEventListener('change', function(e) {
       e.stopPropagation();
       map.eachLayer(layer => {
@@ -205,7 +186,6 @@
       basemaps[e.target.value].addTo(map);
       localStorage.setItem('preferredBasemap', e.target.value);
     });
-
     // ────────────────────────────────────────────────
     // FILTER STATE
     // ────────────────────────────────────────────────
@@ -213,94 +193,85 @@
     let activeTypes = new Set(alertTypesConfig.map(t => t.key));
     let timeFilterDays = Infinity;
     let showActiveOnly = true;
-
-// ────────────────────────────────────────────────
-// ADMIN LOGIN STATE & UI (single button, no duplicates)
-// ────────────────────────────────────────────────
-let isAdmin = false;
-const adminAuth = JSON.parse(localStorage.getItem('adminAuth') || 'null');
-if (adminAuth && adminAuth.email && adminAuth.token) {
-  isAdmin = true;
-}
-
-// Create ONE button
-const adminBtn = document.createElement('button');
-adminBtn.id = 'admin-login-btn';
-adminBtn.textContent = isAdmin ? 'Admin Panel' : 'Admin Login';
-adminBtn.style = 'margin-left: 12px; padding: 8px 14px; background: #d81b60; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.95em;';
-
-// Append it ONCE
-document.getElementById('map-type-selector').appendChild(adminBtn);
-
-// Login modal
-const loginModal = document.createElement('div');
-loginModal.id = 'admin-login-modal';
-loginModal.style = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center;';
-loginModal.innerHTML = `
-  <div style="background:white; padding:30px; border-radius:12px; width:360px; max-width:90%; box-shadow:0 10px 30px rgba(0,0,0,0.4);">
-    <h2 style="margin-top:0; color:#1a3c6d;">Admin Login</h2>
-    <p style="color:#555; margin-bottom:20px;">Enter your email and 64-character UUID token</p>
-    <input type="email" id="admin-email" placeholder="Email address" style="width:100%; padding:10px; margin-bottom:12px; border:1px solid #ccc; border-radius:6px;">
-    <input type="text" id="admin-token" placeholder="64-char UUID token" style="width:100%; padding:10px; margin-bottom:20px; border:1px solid #ccc; border-radius:6px;">
-    <div style="display:flex; gap:12px; justify-content:flex-end;">
-      <button id="admin-cancel" style="padding:10px 20px; background:#757575; color:white; border:none; border-radius:6px; cursor:pointer;">Cancel</button>
-      <button id="admin-submit" style="padding:10px 20px; background:#1976d2; color:white; border:none; border-radius:6px; cursor:pointer;">Login</button>
-    </div>
-    <div style="margin-top:16px; text-align:center; font-size:0.85em; color:#555;">
-      <a href="#" id="admin-logout-link" style="color:#d32f2f; text-decoration:none; ${isAdmin ? '' : 'display:none;'}">Logout</a>
-    </div>
-  </div>
-`;
-document.body.appendChild(loginModal);
-
-// Show modal or admin panel
-adminBtn.addEventListener('click', () => {
-  if (isAdmin) {
-    alert('Admin Panel access coming soon — redirect would go here.');
-    // Later: window.open('admin.html', '_blank');
-  } else {
-    loginModal.style.display = 'flex';
-  }
-});
-
-// Cancel
-document.getElementById('admin-cancel').addEventListener('click', () => {
-  loginModal.style.display = 'none';
-});
-
-// Submit login
-document.getElementById('admin-submit').addEventListener('click', () => {
-  const email = document.getElementById('admin-email').value.trim();
-  const token = document.getElementById('admin-token').value.trim();
-
-  if (!email || !token) {
-    alert('Please enter both email and token');
-    return;
-  }
-
-  if (token.length < 32) {
-    alert('Token should be a valid UUID (at least 32 characters)');
-    return;
-  }
-
-  localStorage.setItem('adminAuth', JSON.stringify({ email, token }));
-  isAdmin = true;
-  adminBtn.textContent = 'Admin Panel';
-  document.getElementById('admin-logout-link').style.display = 'inline';
-  loginModal.style.display = 'none';
-  alert('Admin mode activated!');
-  location.reload();
-});
-
-// Logout
-document.getElementById('admin-logout-link').addEventListener('click', e => {
-  e.preventDefault();
-  if (confirm('Logout from admin mode?')) {
-    localStorage.removeItem('adminAuth');
-    location.reload();
-  }
-});
-
+    // ────────────────────────────────────────────────
+    // ADMIN LOGIN STATE & UI (single button, no duplicates)
+    // ────────────────────────────────────────────────
+    let isAdmin = false;
+    const adminAuth = JSON.parse(localStorage.getItem('adminAuth') || 'null');
+    if (adminAuth && adminAuth.email && adminAuth.token) {
+      isAdmin = true;
+    }
+    // Create ONE button
+    const adminBtn = document.createElement('button');
+    adminBtn.id = 'admin-login-btn';
+    adminBtn.textContent = isAdmin ? 'Admin Panel' : 'Admin Login';
+    adminBtn.style = 'margin-left: 12px; padding: 8px 14px; background: #d81b60; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.95em;';
+    // Append it ONCE
+    document.getElementById('map-type-selector').appendChild(adminBtn);
+    // Login modal
+    const loginModal = document.createElement('div');
+    loginModal.id = 'admin-login-modal';
+    loginModal.style = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center;';
+    loginModal.innerHTML = `
+      <div style="background:white; padding:30px; border-radius:12px; width:360px; max-width:90%; box-shadow:0 10px 30px rgba(0,0,0,0.4);">
+        <h2 style="margin-top:0; color:#1a3c6d;">Admin Login</h2>
+        <p style="color:#555; margin-bottom:20px;">Enter your email and 64-character UUID token</p>
+        <input type="email" id="admin-email" placeholder="Email address" style="width:100%; padding:10px; margin-bottom:12px; border:1px solid #ccc; border-radius:6px;">
+        <input type="text" id="admin-token" placeholder="64-char UUID token" style="width:100%; padding:10px; margin-bottom:20px; border:1px solid #ccc; border-radius:6px;">
+        <div style="display:flex; gap:12px; justify-content:flex-end;">
+          <button id="admin-cancel" style="padding:10px 20px; background:#757575; color:white; border:none; border-radius:6px; cursor:pointer;">Cancel</button>
+          <button id="admin-submit" style="padding:10px 20px; background:#1976d2; color:white; border:none; border-radius:6px; cursor:pointer;">Login</button>
+        </div>
+        <div style="margin-top:16px; text-align:center; font-size:0.85em; color:#555;">
+          <a href="#" id="admin-logout-link" style="color:#d32f2f; text-decoration:none; ${isAdmin ? '' : 'display:none;'}">Logout</a>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(loginModal);
+    // Update logout visibility after modal is appended
+    const logoutLink = document.getElementById('admin-logout-link');
+    if (isAdmin) logoutLink.style.display = 'inline';
+    // Show modal or admin panel
+    adminBtn.addEventListener('click', () => {
+      if (isAdmin) {
+        alert('Admin Panel access coming soon — redirect would go here.');
+        // Later: window.open('admin.html', '_blank');
+      } else {
+        loginModal.style.display = 'flex';
+      }
+    });
+    // Cancel
+    document.getElementById('admin-cancel').addEventListener('click', () => {
+      loginModal.style.display = 'none';
+    });
+    // Submit login
+    document.getElementById('admin-submit').addEventListener('click', () => {
+      const email = document.getElementById('admin-email').value.trim();
+      const token = document.getElementById('admin-token').value.trim();
+      if (!email || !token) {
+        alert('Please enter both email and token');
+        return;
+      }
+      if (token.length < 32) {
+        alert('Token should be a valid UUID (at least 32 characters)');
+        return;
+      }
+      localStorage.setItem('adminAuth', JSON.stringify({ email, token }));
+      isAdmin = true;
+      adminBtn.textContent = 'Admin Panel';
+      logoutLink.style.display = 'inline';
+      loginModal.style.display = 'none';
+      alert('Admin mode activated!');
+      location.reload();
+    });
+    // Logout
+    logoutLink.addEventListener('click', e => {
+      e.preventDefault();
+      if (confirm('Logout from admin mode?')) {
+        localStorage.removeItem('adminAuth');
+        location.reload();
+      }
+    });
     // ────────────────────────────────────────────────
     // CREATE TYPE CHECKBOXES
     // ────────────────────────────────────────────────
@@ -315,7 +286,6 @@ document.getElementById('admin-logout-link').addEventListener('click', e => {
       `;
       typeFiltersDiv.appendChild(label);
     });
-
     const savedTypes = localStorage.getItem('alertTypeFilters');
     if (savedTypes) {
       activeTypes = new Set(JSON.parse(savedTypes));
@@ -323,7 +293,6 @@ document.getElementById('admin-logout-link').addEventListener('click', e => {
         cb.checked = activeTypes.has(cb.value);
       });
     }
-
     document.querySelectorAll('.type-checkbox').forEach(cb => {
       cb.addEventListener('change', function() {
         if (cb.checked) activeTypes.add(cb.value);
@@ -332,7 +301,6 @@ document.getElementById('admin-logout-link').addEventListener('click', e => {
         applyFilters();
       });
     });
-
     // ────────────────────────────────────────────────
     // TIME FILTER RADIO BUTTONS + Active only + Reset
     // ────────────────────────────────────────────────
@@ -346,55 +314,44 @@ document.getElementById('admin-logout-link').addEventListener('click', e => {
         localStorage.setItem('timeFilterDays', timeFilterDays === Infinity ? 'all' : timeFilterDays);
         applyFilters();
       });
-
       const saved = localStorage.getItem('timeFilterDays');
       if (saved === 'all' && this.value === 'all') this.checked = true;
       else if (Number(saved) === Number(this.value)) this.checked = true;
     });
-
     const activeOnlyCheckbox = document.getElementById('active-only');
     activeOnlyCheckbox.addEventListener('change', function() {
       showActiveOnly = this.checked;
       localStorage.setItem('showActiveOnly', showActiveOnly);
       applyFilters();
     });
-
     const savedActive = localStorage.getItem('showActiveOnly');
     if (savedActive !== null) {
       showActiveOnly = savedActive === 'true';
       activeOnlyCheckbox.checked = showActiveOnly;
     }
-
     document.getElementById('reset-filters').addEventListener('click', function() {
       document.querySelectorAll('.type-checkbox').forEach(cb => {
         cb.checked = true;
         activeTypes.add(cb.value);
       });
       localStorage.setItem('alertTypeFilters', JSON.stringify([...activeTypes]));
-
       document.querySelector('input[name="timeFilter"][value="all"]').checked = true;
       timeFilterDays = Infinity;
       localStorage.setItem('timeFilterDays', 'all');
-
       activeOnlyCheckbox.checked = true;
       showActiveOnly = true;
       localStorage.setItem('showActiveOnly', 'true');
-
       applyFilters();
     });
-
     // ────────────────────────────────────────────────
     // APPLY FILTERS
     // ────────────────────────────────────────────────
     function applyFilters() {
       markersCluster.clearLayers();
-
       allMarkers.forEach(marker => {
         const type = (marker.options.alertType || 'other').toLowerCase().trim();
         const timestamp = marker.options.timestamp;
-
         const typeMatch = activeTypes.size === 0 || activeTypes.has(type);
-
         let timeMatch = true;
         if (timeFilterDays !== Infinity && timestamp) {
           const alertTimeMs = parseGoogleDateToMs(timestamp);
@@ -403,13 +360,11 @@ document.getElementById('admin-logout-link').addEventListener('click', e => {
             timeMatch = daysOld <= timeFilterDays;
           }
         }
-
         if (typeMatch && timeMatch) {
           marker.addTo(markersCluster);
         }
       });
     }
-
     // ────────────────────────────────────────────────
     // Parse timestamp to MILLISECONDS (for age calculation)
     // ────────────────────────────────────────────────
@@ -421,7 +376,6 @@ document.getElementById('admin-logout-link').addEventListener('click', e => {
       const date = new Date(year, month0, day, hour, min, sec);
       return date.getTime();
     }
-
     // ────────────────────────────────────────────────
     // Parse timestamp to formatted string for popup only
     // ────────────────────────────────────────────────
@@ -437,13 +391,11 @@ document.getElementById('admin-logout-link').addEventListener('click', e => {
       const ss = String(date.getSeconds()).padStart(2, '0');
       return `${dd}/${mm}/${yyyy} ${hh}:${minStr}:${ss}`;
     }
-
     // ────────────────────────────────────────────────
     // LOAD MARKERS
     // ────────────────────────────────────────────────
     const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
     const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
-
     fetch(url)
       .then(r => r.ok ? r.text() : Promise.reject('HTTP error'))
       .then(text => {
@@ -452,28 +404,22 @@ document.getElementById('admin-logout-link').addEventListener('click', e => {
           .trim()
           .replace(/^google\.visualization\.Query\.setResponse\(/, '')
           .replace(/\);?$/, '');
-
         const data = JSON.parse(cleaned);
         if (!data?.table?.rows) throw new Error('No data');
-
         const rows = data.table.rows;
         console.log(`Loaded ${rows.length} rows`);
-
         allMarkers = [];
-
         rows.forEach(row => {
           const c = row.c || [];
-
-          const timestamp     = c[0]?.v || '';
-          const reporter      = c[1]?.v || 'Anonymous';
-          const zone          = c[3]?.v || 'Unknown';
-          const spotDesc      = c[4]?.v || '';
+          const timestamp = c[0]?.v || '';
+          const reporter = c[1]?.v || 'Anonymous';
+          const zone = c[3]?.v || 'Unknown';
+          const spotDesc = c[4]?.v || '';
           const combinedCoords = c[5]?.v || '';
-          const alertTypeRaw  = c[6]?.v || 'Other';
-          let alertType       = alertTypeRaw.toLowerCase().trim();
-          const details       = c[7]?.v || '';
-          const photo         = c[8]?.v || '';
-
+          const alertTypeRaw = c[6]?.v || 'Other';
+          let alertType = alertTypeRaw.toLowerCase().trim();
+          const details = c[7]?.v || '';
+          const photo = c[8]?.v || '';
           let lat = null, lng = null;
           if (combinedCoords && combinedCoords.includes(',')) {
             const parts = combinedCoords.split(',').map(s => parseFloat(s.trim()));
@@ -482,29 +428,25 @@ document.getElementById('admin-logout-link').addEventListener('click', e => {
               lng = parts[1];
             }
           }
-
           if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
             const center = zoneCenters[zone] || [-30.85, 30.35];
             lat = center[0];
             lng = center[1];
           }
-
           let colorInfo = alertColors["other"];
           let finalType = "other";
-
-          if      (alertType.includes("general")         || alertType.includes("suspicious"))   { colorInfo = alertColors["general"];        finalType = "general"; }
-          else if (alertType.includes("red wave")        || alertType.includes("flood"))        { colorInfo = alertColors["red wave"];       finalType = "red wave"; }
-          else if (alertType.includes("amber blaze")     || alertType.includes("fire") || alertType.includes("hazard")) { colorInfo = alertColors["amber blaze"];    finalType = "amber blaze"; }
-          else if (alertType.includes("scam")            || alertType.includes("doorstep"))     { colorInfo = alertColors["scam"];           finalType = "scam"; }
-          else if (alertType.includes("electrical")      || alertType.includes("fault"))        { colorInfo = alertColors["electrical"];     finalType = "electrical"; }
-          else if (alertType.includes("water")           || alertType.includes("leak") || alertType.includes("interruption")) { colorInfo = alertColors["water"];        finalType = "water"; }
-          else if (alertType.includes("illegal dumping"))                                       { colorInfo = alertColors["illegal dumping"]; finalType = "illegal dumping"; }
-          else if (alertType.includes("municipal")       || alertType.includes("pothole") || alertType.includes("light") || alertType.includes("bush")) { colorInfo = alertColors["municipal"];     finalType = "municipal"; }
+          if (alertType.includes("general") || alertType.includes("suspicious")) { colorInfo = alertColors["general"]; finalType = "general"; }
+          else if (alertType.includes("red wave") || alertType.includes("flood")) { colorInfo = alertColors["red wave"]; finalType = "red wave"; }
+          else if (alertType.includes("amber blaze") || alertType.includes("fire") || alertType.includes("hazard")) { colorInfo = alertColors["amber blaze"]; finalType = "amber blaze"; }
+          else if (alertType.includes("scam") || alertType.includes("doorstep")) { colorInfo = alertColors["scam"]; finalType = "scam"; }
+          else if (alertType.includes("electrical") || alertType.includes("fault")) { colorInfo = alertColors["electrical"]; finalType = "electrical"; }
+          else if (alertType.includes("water") || alertType.includes("leak") || alertType.includes("interruption")) { colorInfo = alertColors["water"]; finalType = "water"; }
+          else if (alertType.includes("illegal dumping")) { colorInfo = alertColors["illegal dumping"]; finalType = "illegal dumping"; }
+          else if (alertType.includes("municipal") || alertType.includes("pothole") || alertType.includes("light") || alertType.includes("bush")) { colorInfo = alertColors["municipal"]; finalType = "municipal"; }
           else {
             colorInfo = alertColors["other"];
             finalType = "other";
           }
-
           const marker = L.circleMarker([lat, lng], {
             radius: 10,
             fillColor: colorInfo.fill,
@@ -513,9 +455,7 @@ document.getElementById('admin-logout-link').addEventListener('click', e => {
             opacity: 1,
             fillOpacity: 0.85
           });
-
           marker.addTo(markersCluster);
-
           marker.bindPopup(`
             <b>${alertTypeRaw} - ${zone}</b><br>
             ${spotDesc}<br>
@@ -524,14 +464,10 @@ document.getElementById('admin-logout-link').addEventListener('click', e => {
             By: ${reporter}<br>
             ${photo ? `<a href="${photo}" target="_blank">View Photo</a>` : ''}
           `);
-
           marker.options.alertType = finalType;
-
           allMarkers.push(marker);
         });
-
         applyFilters();
-
         setTimeout(() => {
           const bounds = markersCluster.getBounds();
           if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
@@ -545,7 +481,6 @@ document.getElementById('admin-logout-link').addEventListener('click', e => {
         console.error('Error loading Sheet:', err);
         document.body.innerHTML += `<p style="color:red; text-align:center; padding:20px;">Error loading map: ${err.message}</p>`;
       });
-
     // ────────────────────────────────────────────────
     // MAP CLICK → CONFIRM → COPY + TEMP MARKER
     // ────────────────────────────────────────────────
@@ -553,11 +488,9 @@ document.getElementById('admin-logout-link').addEventListener('click', e => {
       if (e.originalEvent.target.closest('#legend') || e.originalEvent.target.closest('#map-type-selector') || e.originalEvent.target.tagName === 'SELECT') {
         return;
       }
-
       const lat = e.latlng.lat.toFixed(6);
       const lng = e.latlng.lng.toFixed(6);
       const coords = `${lat}, ${lng}`;
-
       const confirmContent = `
         <div style="text-align:center; padding:12px; min-width:260px;">
           <p style="margin:0 0 12px; font-weight:bold;">Report a new alert<br>at this location?</p>
@@ -569,20 +502,16 @@ document.getElementById('admin-logout-link').addEventListener('click', e => {
           </button>
         </div>
       `;
-
       const confirmPopup = L.popup()
         .setLatLng(e.latlng)
         .setContent(confirmContent)
         .openOn(map);
-
       setTimeout(() => {
         const yesBtn = document.getElementById('confirmYes');
-        const noBtn  = document.getElementById('confirmNo');
-
+        const noBtn = document.getElementById('confirmNo');
         if (yesBtn) {
           yesBtn.onclick = () => {
             navigator.clipboard.writeText(coords).catch(console.error);
-
             const tempMarker = L.circleMarker([lat, lng], {
               radius: 12,
               fillColor: '#ff1744',
@@ -591,28 +520,25 @@ document.getElementById('admin-logout-link').addEventListener('click', e => {
               opacity: 1,
               fillOpacity: 0.7
             }).addTo(map);
-
             tempMarker.bindPopup(`
               <b>New alert location (temporary)</b><br>
               ${coords}<br>
               <small>Paste into form – refresh map after submitting</small>
             `).openPopup();
-
             const toast = document.createElement('div');
             toast.textContent = 'Coordinates copied! Paste into form.';
             toast.style.cssText = 'position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#323232ee; color:white; padding:12px 24px; border-radius:8px; z-index:2000;';
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
-
             window.open("https://docs.google.com/forms/d/e/1FAIpQLSfRG4BSZMwlZtPakPJNaiDoR7XFpZUNDOyXRFOSY8lhfK_GtA/viewform", '_blank');
-
             map.closePopup(confirmPopup);
           };
         }
-
         if (noBtn) {
           noBtn.onclick = () => map.closePopup(confirmPopup);
         }
       }, 100);
     });
   </script>
+</body>
+</html>
