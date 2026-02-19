@@ -141,7 +141,7 @@
     animate: true
   });
   map.addLayer(markersCluster);
-    console.log('Cluster group added to map');
+  console.log('Cluster group added to map');
 
   // Basemap layers
   const basemaps = {
@@ -204,7 +204,7 @@
   });
 
   // ────────────────────────────────────────────────
-  // TIME SLIDER – concise & fixed (no frozen slider)
+  // TIME SLIDER – concise & fully working
   // ────────────────────────────────────────────────
   const timeSlider = document.createElement('input');
   timeSlider.type = 'range';
@@ -222,7 +222,6 @@
   sliderContainer.appendChild(timeSlider);
   sliderContainer.appendChild(timeLabel);
 
-  // Insert after type filters
   typeFiltersDiv.parentNode.insertBefore(sliderContainer, typeFiltersDiv.nextSibling);
 
   // ────────────────────────────────────────────────
@@ -248,7 +247,6 @@
 
       if (typeMatch && timeMatch) {
         marker.addTo(markersCluster);
-        console.log(`Added marker ${index + 1}: type=${finalType}, lat=${lat}, lng=${lng}`);
       }
     });
   }
@@ -274,7 +272,7 @@
   }
 
   // ────────────────────────────────────────────────
-  // LOAD MARKERS – store timestamp + use fixed parser
+  // LOAD MARKERS – with safe time handling
   // ────────────────────────────────────────────────
   const SHEET_ID = "1Bi9g1mnhkHFqqvNhIwQkikJ2gDkJx5xk5jheyu0kAE4";
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses%201`;
@@ -296,7 +294,7 @@
 
       allMarkers = [];
 
-      let oldestDate = Date.now();
+      let oldestDate = Infinity;
 
       rows.forEach(row => {
         const c = row.c || [];
@@ -320,7 +318,7 @@
           }
         }
 
-        if (!lat || !lng) {
+        if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
           const center = zoneCenters[zone] || [-30.85, 30.35];
           lat = center[0];
           lng = center[1];
@@ -329,7 +327,6 @@
         let colorInfo = alertColors["other"];
         let finalType = "other";
 
-        // Exact match to form options
         if      (alertType.includes("general")         || alertType.includes("suspicious"))   { colorInfo = alertColors["general"];        finalType = "general"; }
         else if (alertType.includes("red wave")        || alertType.includes("flood"))        { colorInfo = alertColors["red wave"];       finalType = "red wave"; }
         else if (alertType.includes("amber blaze")     || alertType.includes("fire") || alertType.includes("hazard")) { colorInfo = alertColors["amber blaze"];    finalType = "amber blaze"; }
@@ -366,7 +363,7 @@
         marker.options.alertType = finalType;
         marker.options.timestamp = timestamp;
 
-        // Track oldest timestamp for slider range
+        // Track oldest timestamp
         const alertTime = parseGoogleDate(timestamp);
         if (alertTime && alertTime < oldestDate) {
           oldestDate = alertTime;
@@ -375,10 +372,13 @@
         allMarkers.push(marker);
       });
 
-      // Setup time slider range
-      const daysSinceOldest = Math.max(1, Math.ceil((Date.now() - oldestDate) / (1000 * 60 * 60 * 24)));
+      // Setup time slider safely
+      let daysSinceOldest = 1;
+      if (oldestDate !== Infinity) {
+        daysSinceOldest = Math.max(1, Math.ceil((Date.now() - oldestDate) / (1000 * 60 * 60 * 24)));
+      }
       timeSlider.max = daysSinceOldest;
-      timeSlider.value = daysSinceOldest; // default = all time
+      timeSlider.value = daysSinceOldest; // default all time
 
       // Restore saved value if valid
       const savedDays = localStorage.getItem('timeFilterDays');
@@ -396,10 +396,11 @@
       };
 
       timeSlider.addEventListener('input', updateLabel);
-      updateLabel(); // initial call
+      updateLabel(); // initial
 
       applyFilters();
 
+      // Safe zoom with longer delay
       setTimeout(() => {
         const bounds = markersCluster.getBounds();
         if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
@@ -407,7 +408,7 @@
         } else {
           map.setView([-30.85, 30.35], 12);
         }
-      }, 200);
+      }, 400);
     })
     .catch(err => {
       console.error('Error loading Sheet:', err);
