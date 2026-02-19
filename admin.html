@@ -58,42 +58,48 @@
     // CHANGE THIS TO YOUR REAL APPS SCRIPT WEB APP URL
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyT27PxzMVY3KxMoiccBTipjQQ-44IYxQJqhuRB1v8tCXu7LUpMpcALeHltcl0RoZaW/exec";
 
-    // Get stored auth
-    const storedAuth = JSON.parse(localStorage.getItem('adminAuth') || 'null');
+   // Get stored auth
+const storedAuth = JSON.parse(localStorage.getItem('adminAuth') || 'null');
 
-    if (!storedAuth || !storedAuth.email || !storedAuth.token) {
-      alert("Please log in first.");
-      window.location.href = "/"; // redirect to public dashboard
+// If no auth data at all → force redirect to login page
+if (!storedAuth || !storedAuth.email || !storedAuth.token) {
+  alert("Please log in from the main dashboard first.");
+  window.location.href = "/"; // or full URL e.g. "https://elysiumhomewatch.github.io/.../index.html"
+  // Stop script execution
+  throw new Error("No auth → redirecting");
+}
+
+// Now safe to proceed with verification
+async function verifyAdminAuth() {
+  const params = new URLSearchParams({
+    action: "check-auth",
+    email: storedAuth.email.trim(),
+    token: storedAuth.token.trim()
+  });
+
+  try {
+    const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+    const data = await response.json();
+
+    console.log("Auth response from server:", data); // ← keep this for debugging
+
+    if (!data.success || !data.isAdmin) {
+      alert("Session invalid or expired. Please log in again.");
+      localStorage.removeItem('adminAuth');
+      window.location.href = "/";
+      return false;
     }
 
-    // Verify auth with server
-    async function verifyAdmin() {
-      const params = new URLSearchParams({
-        action: "check-auth",
-        email: storedAuth.email,
-        token: storedAuth.token
-      });
-
-      try {
-        const response = await fetch(`${SCRIPT_URL}?${params}`);
-        const data = await response.json();
-
-        if (!data.success || !data.isAdmin) {
-          alert("Invalid or expired session. Please log in again.");
-          localStorage.removeItem('adminAuth');
-          window.location.href = "/";
-          return false;
-        }
-
-        document.getElementById('loading').style.display = 'none';
-        return true;
-      } catch (err) {
-        console.error("Auth check failed", err);
-        document.getElementById('error').textContent = "Authentication failed. Please try again.";
-        document.getElementById('error').style.display = 'block';
-        return false;
-      }
-    }
+    document.getElementById('loading').style.display = 'none';
+    return true;
+  } catch (err) {
+    console.error("Auth check failed:", err);
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error').textContent = "Failed to verify admin access. Try again.";
+    document.getElementById('error').style.display = 'block';
+    return false;
+  }
+}
 
     // Load alerts (only if auth is valid)
     async function loadAlerts() {
