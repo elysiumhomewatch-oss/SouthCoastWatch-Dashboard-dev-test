@@ -33,7 +33,7 @@
     <button class="logout-btn" id="logout">Logout</button>
     <div id="map"></div>
 
-    <!-- Admin Filters Panel (same as public dashboard) -->
+    <!-- Admin Filters Panel -->
     <details id="admin-filters" style="max-width: 800px; margin: 0 auto 20px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden;">
       <summary style="padding: 14px; font-weight: bold; background: #e3f2fd; cursor: pointer; font-size: 1.1em; border-radius: 8px;">
         Filter Alerts
@@ -90,7 +90,7 @@
       window.location.href = "/";
     }
 
-    // Alert colors (same as index.html)
+    // Alert colors
     const alertColors = {
       "general": { fill: "#d32f2f", border: "#b71c1c" },
       "red wave": { fill: "#1976d2", border: "#0d47a1" },
@@ -103,7 +103,7 @@
       "other": { fill: "#424242", border: "#212121" }
     };
 
-    // Zone fallback centers (same as index.html)
+    // Zone fallback centers
     const zoneCenters = {
       "Highway West": [-30.464248, 30.637618],
       "Sea East": [-30.90, 30.45],
@@ -227,7 +227,7 @@
         adminAllAlerts = data.alerts;
         console.log("Total alerts loaded:", adminAllAlerts.length);
 
-        // Create persistent markers once
+        // Create persistent markers once (like public script)
         adminAllMarkers = [];
         markersCluster.clearLayers();
 
@@ -235,10 +235,12 @@
           let lat = alert.lat;
           let lng = alert.lng;
 
-          if (isNaN(lat) || isNaN(lng)) {
+          // Strong fallback if coords missing or invalid
+          if (isNaN(lat) || isNaN(lng) || lat === null || lng === null) {
             const fb = zoneCenters[alert.zone] || zoneCenters["Unknown"];
             lat = fb[0];
             lng = fb[1];
+            console.log("Using zone fallback for alert:", alert.zone, lat, lng);
           }
 
           if (!isNaN(lat) && !isNaN(lng)) {
@@ -278,12 +280,14 @@
 
             marker.addTo(markersCluster);
             adminAllMarkers.push(marker);
+          } else {
+            console.warn("No valid lat/lng even after fallback for alert:", alert);
           }
         });
 
         // Initial auto-fit
         setTimeout(() => {
-          console.log("Initial markers:", markersCluster.getLayers().length);
+          console.log("Initial markers created:", markersCluster.getLayers().length);
           if (markersCluster.getLayers().length > 0) {
             const bounds = markersCluster.getBounds();
             if (bounds.isValid()) {
@@ -343,7 +347,7 @@
           applyAdminFilters();
         });
 
-        // Initial filter application
+        // Initial render
         applyAdminFilters();
 
         document.getElementById('loading').style.display = 'none';
@@ -385,7 +389,7 @@
         }
       });
 
-      // Auto-fit after filter
+      // Auto-fit
       setTimeout(() => {
         console.log("Filtered markers:", markersCluster.getLayers().length);
         if (markersCluster.getLayers().length > 0) {
