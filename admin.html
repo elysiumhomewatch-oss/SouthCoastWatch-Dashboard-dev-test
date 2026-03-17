@@ -125,39 +125,47 @@
   // ────────────────────────────────────────────────
   // Initialize map + cluster group
   // ────────────────────────────────────────────────
-  const map = L.map('map').setView([-30.85, 30.35], 12);
+  // ────────────────────────────────────────────────
+// Initialize map + cluster group
+// ────────────────────────────────────────────────
+const map = L.map('map', {
+  center: [-30.85, 30.35],
+  zoom: 12,
+  maxZoom: 19   // required for MarkerCluster to work properly
+});
 
-  const markersCluster = L.markerClusterGroup({
-    maxClusterRadius: 40,
-    spiderfyOnMaxZoom: true,
-    showCoverageOnHover: false,
-    zoomToBoundsOnClick: true,
-    animate: true,
-    iconCreateFunction: function(cluster) {
-      const childMarkers = cluster.getAllChildMarkers();
-      const typeCounts = {};
-      childMarkers.forEach(m => {
-        const t = m.options.alertType || 'other';
-        typeCounts[t] = (typeCounts[t] || 0) + 1;
-      });
-      let dominant = 'other';
-      let max = 0;
-      for (const t in typeCounts) {
-        if (typeCounts[t] > max) { max = typeCounts[t]; dominant = t; }
-      }
-      const color = alertColors[dominant]?.fill || '#424242';
-      return L.divIcon({
-        html: `<div style="background:${color};color:white;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;border:3px solid #fff;">${cluster.getChildCount()}</div>`,
-        className: 'custom-cluster',
-        iconSize: [40, 40]
-      });
+const markersCluster = L.markerClusterGroup({
+  maxClusterRadius: 40,
+  spiderfyOnMaxZoom: true,
+  showCoverageOnHover: false,
+  zoomToBoundsOnClick: true,
+  animate: true,
+  iconCreateFunction: function(cluster) {
+    const childMarkers = cluster.getAllChildMarkers();
+    const typeCounts = {};
+    childMarkers.forEach(m => {
+      const t = m.options.alertType || 'other';
+      typeCounts[t] = (typeCounts[t] || 0) + 1;
+    });
+    let dominant = 'other';
+    let max = 0;
+    for (const t in typeCounts) {
+      if (typeCounts[t] > max) { max = typeCounts[t]; dominant = t; }
     }
-  });
-  map.addLayer(markersCluster);
+    const color = alertColors[dominant]?.fill || '#424242';
+    return L.divIcon({
+      html: `<div style="background:${color};color:white;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;border:3px solid #fff;">${cluster.getChildCount()}</div>`,
+      className: 'custom-cluster',
+      iconSize: [40, 40]
+    });
+  }
+});
+map.addLayer(markersCluster);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  maxZoom: 19   // also good to match here
+}).addTo(map);
 
   // ────────────────────────────────────────────────
   // Auth check
