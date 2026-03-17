@@ -231,56 +231,90 @@
         adminAllMarkers = [];
         markersCluster.clearLayers();
 
-        adminAllAlerts.forEach(alert => {
-          let lat = parseFloat(alert.lat);
-          let lng = parseFloat(alert.lng);
+adminAllMarkers = [];
+markersCluster.clearLayers();
 
-          if (isNaN(lat) || isNaN(lng)) {
-            const fb = zoneCenters[alert.zone] || zoneCenters["Unknown"];
-            lat = fb[0];
-            lng = fb[1];
-          }
+adminAllAlerts.forEach(alert => {
+  let lat = parseFloat(alert.lat);
+  let lng = parseFloat(alert.lng);
 
-          if (!isNaN(lat) && !isNaN(lng)) {
-            let colorInfo = alertColors["other"];
-            let finalType = "other";
+  if (isNaN(lat) || isNaN(lng)) {
+    const fb = zoneCenters[alert.zone] || zoneCenters["Unknown"];
+    lat = fb[0];
+    lng = fb[1];
+  }
 
-            const typeLower = (alert.type || "").toLowerCase().trim();
-            if (typeLower.includes("general") || typeLower.includes("suspicious")) { colorInfo = alertColors["general"]; finalType = "general"; }
-            else if (typeLower.includes("red wave") || typeLower.includes("flood")) { colorInfo = alertColors["red wave"]; finalType = "red wave"; }
-            else if (typeLower.includes("amber blaze") || typeLower.includes("fire") || typeLower.includes("hazard")) { colorInfo = alertColors["amber blaze"]; finalType = "amber blaze"; }
-            else if (typeLower.includes("scam") || typeLower.includes("doorstep")) { colorInfo = alertColors["scam"]; finalType = "scam"; }
-            else if (typeLower.includes("electrical") || typeLower.includes("fault")) { colorInfo = alertColors["electrical"]; finalType = "electrical"; }
-            else if (typeLower.includes("water") || typeLower.includes("leak") || typeLower.includes("interruption")) { colorInfo = alertColors["water"]; finalType = "water"; }
-            else if (typeLower.includes("illegal dumping")) { colorInfo = alertColors["illegal dumping"]; finalType = "illegal dumping"; }
-            else if (typeLower.includes("municipal") || typeLower.includes("pothole") || typeLower.includes("light") || typeLower.includes("bush")) { colorInfo = alertColors["municipal"]; finalType = "municipal"; }
+  if (!isNaN(lat) && !isNaN(lng)) {
+    let colorInfo = alertColors["other"];
+    let finalType = "other";
 
-            const marker = L.circleMarker([lat, lng], {
-              radius: 10,
-              fillColor: colorInfo.fill,
-              color: colorInfo.border,
-              weight: 2,
-              opacity: 1,
-              fillOpacity: 0.85
-            });
+    // Use raw type string from sheet (same as public)
+    const alertTypeRaw = alert.type || "Other";
+    const alertType = alertTypeRaw.toLowerCase().trim();
 
-            marker.bindPopup(`
-              <b>${alert.type || 'Other'} - ${alert.zone || 'Unknown'}</b><br>
-              Reported: ${alert.timestamp || 'Unknown'}<br>
-              By: ${alert.reporter || 'Anonymous'}<br>
-              Status: ${alert.status || 'Unspecified'}<br>
-              ${alert.photo ? `<a href="${alert.photo}" target="_blank">View Photo</a>` : ''}
-            `);
+    if (alertType.includes("general") || alertType.includes("suspicious")) {
+      colorInfo = alertColors["general"];
+      finalType = "general";
+    }
+    else if (alertType.includes("red wave") || alertType.includes("flood")) {
+      colorInfo = alertColors["red wave"];
+      finalType = "red wave";
+    }
+    else if (alertType.includes("amber blaze") || alertType.includes("fire") || alertType.includes("hazard")) {
+      colorInfo = alertColors["amber blaze"];
+      finalType = "amber blaze";
+    }
+    else if (alertType.includes("scam") || alertType.includes("doorstep")) {
+      colorInfo = alertColors["scam"];
+      finalType = "scam";
+    }
+    else if (alertType.includes("electrical") || alertType.includes("fault")) {
+      colorInfo = alertColors["electrical"];
+      finalType = "electrical";
+    }
+    else if (alertType.includes("water") || alertType.includes("leak") || alertType.includes("interruption")) {
+      colorInfo = alertColors["water"];
+      finalType = "water";
+    }
+    else if (alertType.includes("illegal dumping")) {
+      colorInfo = alertColors["illegal dumping"];
+      finalType = "illegal dumping";
+    }
+    else if (alertType.includes("municipal") || alertType.includes("pothole") || alertType.includes("light") || alertType.includes("bush")) {
+      colorInfo = alertColors["municipal"];
+      finalType = "municipal";
+    }
+    else {
+      colorInfo = alertColors["other"];
+      finalType = "other";
+    }
 
-            marker.options.alertType = finalType;
-            marker.options.status = alert.status || '';
-            marker.options.timestamp = alert.timestamp || '';
-            marker.options.row = alert.row;
+    const marker = L.circleMarker([lat, lng], {
+      radius: 10,
+      fillColor: colorInfo.fill,
+      color: colorInfo.border,
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.85
+    });
 
-            marker.addTo(markersCluster);
-            adminAllMarkers.push(marker);
-          }
-        });
+    marker.bindPopup(`
+      <b>${alert.type || 'Other'} - ${alert.zone || 'Unknown'}</b><br>
+      Reported: ${alert.timestamp || 'Unknown'}<br>
+      By: ${alert.reporter || 'Anonymous'}<br>
+      Status: ${alert.status || 'Unspecified'}<br>
+      ${alert.photo ? `<a href="${alert.photo}" target="_blank">View Photo</a>` : ''}
+    `);
+
+    marker.options.alertType = finalType;
+    marker.options.status = alert.status || '';
+    marker.options.timestamp = alert.timestamp || '';
+    marker.options.row = alert.row;
+
+    marker.addTo(markersCluster);
+    adminAllMarkers.push(marker);
+  }
+});
 
         // Initial auto-fit
         setTimeout(() => {
