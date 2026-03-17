@@ -33,7 +33,7 @@
     <button class="logout-btn" id="logout">Logout</button>
     <div id="map"></div>
 
-    <!-- Admin Filters Panel -->
+    <!-- Admin Filters Panel (same as public dashboard) -->
     <details id="admin-filters" style="max-width: 800px; margin: 0 auto 20px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden;">
       <summary style="padding: 14px; font-weight: bold; background: #e3f2fd; cursor: pointer; font-size: 1.1em; border-radius: 8px;">
         Filter Alerts
@@ -90,7 +90,7 @@
       window.location.href = "/";
     }
 
-    // Alert colors
+    // Alert colors (same as index.html)
     const alertColors = {
       "general": { fill: "#d32f2f", border: "#b71c1c" },
       "red wave": { fill: "#1976d2", border: "#0d47a1" },
@@ -103,7 +103,7 @@
       "other": { fill: "#424242", border: "#212121" }
     };
 
-    // Zone fallback centers
+    // Zone fallback centers (same as index.html)
     const zoneCenters = {
       "Highway West": [-30.464248, 30.637618],
       "Sea East": [-30.90, 30.45],
@@ -115,6 +115,7 @@
 
     // Filter state
     let adminAllAlerts = [];
+    let adminAllMarkers = [];
     let adminActiveTypes = new Set();
     let adminTimeFilterDays = Infinity;
     let adminShowActiveOnly = true;
@@ -203,7 +204,7 @@
     }
 
     // ────────────────────────────────────────────────
-    // Load alerts + markers
+    // Load alerts + create persistent markers
     // ────────────────────────────────────────────────
     async function loadAlerts() {
       document.getElementById('loading').textContent = "Verifying access...";
@@ -226,6 +227,71 @@
         adminAllAlerts = data.alerts;
         console.log("Total alerts loaded:", adminAllAlerts.length);
 
+        // Create persistent markers once
+        adminAllMarkers = [];
+        markersCluster.clearLayers();
+
+        adminAllAlerts.forEach(alert => {
+          let lat = alert.lat;
+          let lng = alert.lng;
+
+          if (isNaN(lat) || isNaN(lng)) {
+            const fb = zoneCenters[alert.zone] || zoneCenters["Unknown"];
+            lat = fb[0];
+            lng = fb[1];
+          }
+
+          if (!isNaN(lat) && !isNaN(lng)) {
+            let colorInfo = alertColors["other"];
+            let finalType = "other";
+
+            const typeLower = (alert.type || "").toLowerCase().trim();
+            if (typeLower.includes("general") || typeLower.includes("suspicious")) { colorInfo = alertColors["general"]; finalType = "general"; }
+            else if (typeLower.includes("red wave") || typeLower.includes("flood")) { colorInfo = alertColors["red wave"]; finalType = "red wave"; }
+            else if (typeLower.includes("amber blaze") || typeLower.includes("fire") || typeLower.includes("hazard")) { colorInfo = alertColors["amber blaze"]; finalType = "amber blaze"; }
+            else if (typeLower.includes("scam") || typeLower.includes("doorstep")) { colorInfo = alertColors["scam"]; finalType = "scam"; }
+            else if (typeLower.includes("electrical") || typeLower.includes("fault")) { colorInfo = alertColors["electrical"]; finalType = "electrical"; }
+            else if (typeLower.includes("water") || typeLower.includes("leak") || typeLower.includes("interruption")) { colorInfo = alertColors["water"]; finalType = "water"; }
+            else if (typeLower.includes("illegal dumping")) { colorInfo = alertColors["illegal dumping"]; finalType = "illegal dumping"; }
+            else if (typeLower.includes("municipal") || typeLower.includes("pothole") || typeLower.includes("light") || typeLower.includes("bush")) { colorInfo = alertColors["municipal"]; finalType = "municipal"; }
+
+            const marker = L.circleMarker([lat, lng], {
+              radius: 10,
+              fillColor: colorInfo.fill,
+              color: colorInfo.border,
+              weight: 2,
+              opacity: 1,
+              fillOpacity: 0.85
+            });
+
+            marker.bindPopup(`
+              <b>${alert.type || 'Other'} - ${alert.zone || 'Unknown'}</b><br>
+              Reported: ${alert.timestamp || 'Unknown'}<br>
+              By: ${alert.reporter || 'Anonymous'}<br>
+              Status: ${alert.status || 'Unspecified'}<br>
+              ${alert.photo ? `<a href="${alert.photo}" target="_blank">View Photo</a>` : ''}
+            `);
+
+            marker.options.alertType = finalType;
+            marker.options.status = alert.status || '';
+            marker.options.timestamp = alert.timestamp || '';
+
+            marker.addTo(markersCluster);
+            adminAllMarkers.push(marker);
+          }
+        });
+
+        // Initial auto-fit
+        setTimeout(() => {
+          console.log("Initial markers:", markersCluster.getLayers().length);
+          if (markersCluster.getLayers().length > 0) {
+            const bounds = markersCluster.getBounds();
+            if (bounds.isValid()) {
+              map.fitBounds(bounds, { padding: [50, 50] });
+            }
+          }
+        }, 800);
+
         // Populate type filters
         const typeDiv = document.getElementById('admin-type-filters');
         adminAlertTypesConfig.forEach(t => {
@@ -240,7 +306,7 @@
         adminTimeFilterDays = Infinity;
         adminShowActiveOnly = false;
 
-        // Sync UI with defaults
+        // Sync UI
         document.querySelector('input[name="adminTimeFilter"][value="all"]').checked = true;
         document.getElementById('admin-active-only').checked = false;
         document.querySelectorAll('.admin-type-checkbox').forEach(cb => cb.checked = true);
@@ -277,7 +343,7 @@
           applyAdminFilters();
         });
 
-        // Initial render
+        // Initial filter application
         applyAdminFilters();
 
         document.getElementById('loading').style.display = 'none';
@@ -291,10 +357,49 @@
     }
 
     // ────────────────────────────────────────────────
-    // Apply filters (table + markers)
+    // Apply filters (add/remove markers like public script)
     // ────────────────────────────────────────────────
     function applyAdminFilters() {
-      const filtered = adminAllAlerts.filter(a => {
+      markersCluster.clearLayers();
+
+      adminAllMarkers.forEach(marker => {
+        const alert = adminAllAlerts.find(a => a.row === marker.options.row);
+        if (!alert) return;
+
+        const type = (alert.type || 'other').toLowerCase().trim();
+        const typeMatch = adminActiveTypes.size === 0 || adminActiveTypes.has(type);
+
+        let timeMatch = true;
+        if (adminTimeFilterDays !== Infinity && alert.timestamp) {
+          const ms = parseGoogleDateToMs(alert.timestamp);
+          if (ms) {
+            const daysOld = (Date.now() - ms) / 86400000;
+            timeMatch = daysOld <= adminTimeFilterDays;
+          }
+        }
+
+        const activeMatch = !adminShowActiveOnly || (alert.status || '').toLowerCase() !== 'resolved';
+
+        if (typeMatch && timeMatch && activeMatch) {
+          marker.addTo(markersCluster);
+        }
+      });
+
+      // Auto-fit after filter
+      setTimeout(() => {
+        console.log("Filtered markers:", markersCluster.getLayers().length);
+        if (markersCluster.getLayers().length > 0) {
+          const bounds = markersCluster.getBounds();
+          if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [50, 50] });
+          }
+        }
+      }, 400);
+
+      // Update table
+      const tbody = document.getElementById('alert-table-body');
+      tbody.innerHTML = '';
+      adminAllAlerts.filter(a => {
         const type = (a.type || 'other').toLowerCase().trim();
         const typeMatch = adminActiveTypes.size === 0 || adminActiveTypes.has(type);
 
@@ -310,73 +415,7 @@
         const activeMatch = !adminShowActiveOnly || (a.status || '').toLowerCase() !== 'resolved';
 
         return typeMatch && timeMatch && activeMatch;
-      });
-
-      // Clear existing markers
-      markersCluster.clearLayers();
-
-      // Add filtered markers with fallback
-      filtered.forEach(a => {
-        let lat = a.lat;
-        let lng = a.lng;
-
-        if (isNaN(lat) || isNaN(lng)) {
-          const fb = zoneCenters[a.zone] || zoneCenters["Unknown"];
-          lat = fb[0];
-          lng = fb[1];
-        }
-
-        if (!isNaN(lat) && !isNaN(lng)) {
-          let colorInfo = alertColors["other"];
-          let finalType = "other";
-
-          const typeLower = (a.type || "").toLowerCase().trim();
-          if (typeLower.includes("general") || typeLower.includes("suspicious")) { colorInfo = alertColors["general"]; finalType = "general"; }
-          else if (typeLower.includes("red wave") || typeLower.includes("flood")) { colorInfo = alertColors["red wave"]; finalType = "red wave"; }
-          else if (typeLower.includes("amber blaze") || typeLower.includes("fire") || typeLower.includes("hazard")) { colorInfo = alertColors["amber blaze"]; finalType = "amber blaze"; }
-          else if (typeLower.includes("scam") || typeLower.includes("doorstep")) { colorInfo = alertColors["scam"]; finalType = "scam"; }
-          else if (typeLower.includes("electrical") || typeLower.includes("fault")) { colorInfo = alertColors["electrical"]; finalType = "electrical"; }
-          else if (typeLower.includes("water") || typeLower.includes("leak") || typeLower.includes("interruption")) { colorInfo = alertColors["water"]; finalType = "water"; }
-          else if (typeLower.includes("illegal dumping")) { colorInfo = alertColors["illegal dumping"]; finalType = "illegal dumping"; }
-          else if (typeLower.includes("municipal") || typeLower.includes("pothole") || typeLower.includes("light") || typeLower.includes("bush")) { colorInfo = alertColors["municipal"]; finalType = "municipal"; }
-
-          const marker = L.circleMarker([lat, lng], {
-            radius: 10,
-            fillColor: colorInfo.fill,
-            color: colorInfo.border,
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.85
-          });
-
-          marker.bindPopup(`
-            <b>${a.type || 'Other'} - ${a.zone || 'Unknown'}</b><br>
-            Reported: ${a.timestamp || 'Unknown'}<br>
-            By: ${a.reporter || 'Anonymous'}<br>
-            Status: ${a.status || 'Unspecified'}<br>
-            ${a.photo ? `<a href="${a.photo}" target="_blank">View Photo</a>` : ''}
-          `);
-
-          marker.options.alertType = finalType;
-          marker.addTo(markersCluster);
-        }
-      });
-
-      // Auto-fit bounds
-      setTimeout(() => {
-        console.log("Filtered markers:", markersCluster.getLayers().length);
-        if (markersCluster.getLayers().length > 0) {
-          const bounds = markersCluster.getBounds();
-          if (bounds.isValid()) {
-            map.fitBounds(bounds, { padding: [50, 50] });
-          }
-        }
-      }, 800);
-
-      // Update table
-      const tbody = document.getElementById('alert-table-body');
-      tbody.innerHTML = '';
-      filtered.forEach(a => {
+      }).forEach(a => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${a.timestamp || '—'}</td>
