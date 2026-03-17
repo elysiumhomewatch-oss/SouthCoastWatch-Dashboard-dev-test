@@ -360,58 +360,101 @@
     // Filter alerts in table and map
     // ────────────────────────────────────────────────
     function filterAlerts() {
-      const tbody = document.getElementById('alert-table-body');
-      const rows = tbody.getElementsByTagName('tr');
+  // 1. Filter table rows (hide/show <tr>)
+  const tbody = document.getElementById('alert-table-body');
+  const rows = tbody.getElementsByTagName('tr');
 
-      // Filter table rows
-      for (let row of rows) {
-        const dateCell = row.cells[0];
-        const timestampStr = dateCell.textContent.trim();
+  for (let row of rows) {
+    const dateCell = row.cells[0];
+    const timestampStr = dateCell.textContent.trim();
 
-        let showRow = true;
+    let showRow = true;
 
-        if (timeFilterDays !== Infinity && timestampStr) {
-          const ms = parseGoogleDateToMs(timestampStr);
-          if (ms) {
-            const daysOld = (Date.now() - ms) / (1000 * 60 * 60 * 24);
-            showRow = daysOld <= timeFilterDays;
-          }
-        }
+    if (timeFilterDays !== Infinity && timestampStr) {
+      const ms = parseGoogleDateToMs(timestampStr);
+      if (ms) {
+        const daysOld = (Date.now() - ms) / (1000 * 60 * 60 * 24);
+        showRow = daysOld <= timeFilterDays;
+      }
+    }
 
-        row.style.display = showRow ? '' : 'none';
+    row.style.display = showRow ? '' : 'none';
+  }
+
+  // 2. Filter markers: completely clear cluster and re-add only matching ones
+  markersCluster.clearLayers();
+
+  allAlerts.forEach(alert => {
+    let showMarker = true;
+
+    if (timeFilterDays !== Infinity && alert.timestamp) {
+      const ms = parseGoogleDateToMs(alert.timestamp);
+      if (ms) {
+        const daysOld = (Date.now() - ms) / (1000 * 60 * 60 * 24);
+        showMarker = daysOld <= timeFilterDays;
+      }
+    }
+
+    if (showMarker) {
+      // Re-create marker (or find existing one if you stored them)
+      let lat = parseFloat(alert.lat);
+      let lng = parseFloat(alert.lng);
+
+      if (isNaN(lat) || isNaN(lng)) {
+        const fallback = zoneCenters[alert.zone] || zoneCenters["Unknown"];
+        lat = fallback[0];
+        lng = fallback[1];
       }
 
-      // Filter markers: clear and re-add only those that match
-      markersCluster.clearLayers();
+      if (!isNaN(lat) && !isNaN(lng)) {
+        let colorInfo = alertColors["other"];
+        let finalType = "other";
 
-      allAlerts.forEach(alert => {
-        let showMarker = true;
+        const typeLower = (alert.type || "").toLowerCase().trim();
+        if (typeLower.includes("general") || typeLower.includes("suspicious")) { colorInfo = alertColors["general"]; finalType = "general"; }
+        else if (typeLower.includes("red wave") || typeLower.includes("flood")) { colorInfo = alertColors["red wave"]; finalType = "red wave"; }
+        else if (typeLower.includes("amber blaze") || typeLower.includes("fire") || typeLower.includes("hazard")) { colorInfo = alertColors["amber blaze"]; finalType = "amber blaze"; }
+        else if (typeLower.includes("scam") || typeLower.includes("doorstep")) { colorInfo = alertColors["scam"]; finalType = "scam"; }
+        else if (typeLower.includes("electrical") || typeLower.includes("fault")) { colorInfo = alertColors["electrical"]; finalType = "electrical"; }
+        else if (typeLower.includes("water") || typeLower.includes("leak") || typeLower.includes("interruption")) { colorInfo = alertColors["water"]; finalType = "water"; }
+        else if (typeLower.includes("illegal dumping")) { colorInfo = alertColors["illegal dumping"]; finalType = "illegal dumping"; }
+        else if (typeLower.includes("municipal") || typeLower.includes("pothole") || typeLower.includes("light") || typeLower.includes("bush")) { colorInfo = alertColors["municipal"]; finalType = "municipal"; }
 
-        if (timeFilterDays !== Infinity && alert.timestamp) {
-          const ms = parseGoogleDateToMs(alert.timestamp);
-          if (ms) {
-            const daysOld = (Date.now() - ms) / (1000 * 60 * 60 * 24);
-            showMarker = daysOld <= timeFilterDays;
-          }
-        }
+        const marker = L.circleMarker([lat, lng], {
+          radius: 10,
+          fillColor: colorInfo.fill,
+          color: colorInfo.border,
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.85
+        });
 
-        if (showMarker) {
-          // Find and re-add the marker for this alert
-          const marker = Array.from(markersCluster.getLayers()).find(m => m.options.timestamp === alert.timestamp);
-          if (marker) {
-            marker.addTo(markersCluster);
-          }
-        }
-      });
+        marker.bindPopup(`
+          <b>${alert.type || 'Other'} - ${alert.zone || 'Unknown'}</b><br>
+          Reported: ${alert.timestamp || 'Unknown'}<br>
+          By: ${alert.reporter || 'Anonymous'}<br>
+          Status: ${alert.status || 'Unspecified'}<br>
+          ${alert.photo ? `<a href="${alert.photo}" target="_blank">View Photo</a>` : ''}
+        `);
 
-      // Auto-fit to visible markers
-      setTimeout(() => {
-        const bounds = markersCluster.getBounds();
-        if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
-          map.fitBounds(bounds, { padding: [50, 50] });
-        }
-      }, 400);
+        marker.options.alertType = finalType;
+        marker.options.timestamp = alert.timestamp || '';
+
+        marker.addTo(markersCluster);
+      }
     }
+  });
+
+  // 3. Auto-fit to currently visible markers
+  setTimeout(() => {
+    const bounds = markersCluster.getBounds();
+    if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    } else {
+      map.setView([-30.85, 30.35], 12);
+    }
+  }, 400);
+}
 
     // Helper: parse timestamp string to milliseconds
     function parseGoogleDateToMs(str) {
