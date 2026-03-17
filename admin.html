@@ -122,9 +122,35 @@
     { key: "other", label: "Other" }
   ];
 
+   // ────────────────────────────────────────────────
+  // Auth check
   // ────────────────────────────────────────────────
-  // Initialize map + cluster group
-  // ────────────────────────────────────────────────
+  async function verifyAdminAuth() {
+    const params = new URLSearchParams({
+      action: "check-auth",
+      email: storedAuth.email.trim(),
+      token: storedAuth.token.trim()
+    });
+
+    try {
+      const res = await fetch(`${SCRIPT_URL}?${params}`);
+      const data = await res.json();
+      console.log("Server auth response:", data);
+      if (!data.success || !data.isAdmin) {
+        alert("Session invalid. Please log in again.");
+        localStorage.removeItem('adminAuth');
+        window.location.href = "/";
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error("Auth failed:", err);
+      document.getElementById('error').textContent = "Auth check failed.";
+      document.getElementById('error').style.display = 'block';
+      return false;
+    }
+  }
+
   // ────────────────────────────────────────────────
 // Initialize map + cluster group
 // ────────────────────────────────────────────────
@@ -167,34 +193,6 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19   // also good to match here
 }).addTo(map);
 
-  // ────────────────────────────────────────────────
-  // Auth check
-  // ────────────────────────────────────────────────
-  async function verifyAdminAuth() {
-    const params = new URLSearchParams({
-      action: "check-auth",
-      email: storedAuth.email.trim(),
-      token: storedAuth.token.trim()
-    });
-
-    try {
-      const res = await fetch(`${SCRIPT_URL}?${params}`);
-      const data = await res.json();
-      console.log("Server auth response:", data);
-      if (!data.success || !data.isAdmin) {
-        alert("Session invalid. Please log in again.");
-        localStorage.removeItem('adminAuth');
-        window.location.href = "/";
-        return false;
-      }
-      return true;
-    } catch (err) {
-      console.error("Auth failed:", err);
-      document.getElementById('error').textContent = "Auth check failed.";
-      document.getElementById('error').style.display = 'block';
-      return false;
-    }
-  }
 
   // ────────────────────────────────────────────────
   // Load alerts + markers
