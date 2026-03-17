@@ -26,6 +26,9 @@
     #loading { text-align: center; padding: 40px; font-size: 1.2em; color: #555; }
     #error { color: red; text-align: center; padding: 20px; }
     #admin-panel { max-width: 1200px; margin: 0 auto; }
+    .filter-controls { margin: 20px auto; text-align: center; max-width: 600px; }
+    .filter-controls label { margin-right: 15px; font-weight: bold; }
+    .filter-controls select { padding: 8px; font-size: 1em; border-radius: 6px; border: 1px solid #ccc; }
   </style>
 </head>
 <body>
@@ -34,6 +37,17 @@
     <button class="logout-btn" id="logout">Logout</button>
 
     <div id="map"></div>
+
+    <!-- Temporal Filter Dropdown (same options as public app) -->
+    <div class="filter-controls">
+      <label for="timeFilter">Show alerts from:</label>
+      <select id="timeFilter">
+        <option value="all" selected>All time</option>
+        <option value="7">Last 7 days</option>
+        <option value="3">Last 3 days</option>
+        <option value="1">Last 24 hours</option>
+      </select>
+    </div>
 
     <table id="alert-table">
       <thead>
@@ -319,46 +333,88 @@
       }
     }
 
-    // Status change handler
-    document.querySelectorAll('.status-select').forEach(select => {
-      select.addEventListener('change', async function() {
-        const row = this.dataset.id;
-        const newStatus = this.value;
+    // ────────────────────────────────────────────────
+    // Temporal filter logic (same as public dashboard)
+    // ────────────────────────────────────────────────
+    let timeFilterDays = Infinity;
 
-        if (confirm(`Change status to "${newStatus}"?`)) {
-          const params = new URLSearchParams({
-            action: "update-status",
-            row: row,
-            status: newStatus,
-            email: storedAuth.email,
-            token: storedAuth.token
-          });
+    document.getElementById('timeFilter').addEventListener('change', function() {
+      const value = this.value;
+      if (value === 'all') {
+        timeFilterDays = Infinity;
+      } else {
+        timeFilterDays = Number(value);
+      }
+      filterAlerts();
+    });
 
-          const response = await fetch(`${SCRIPT_URL}?${params}`);
-          const result = await response.json();
+    // ────────────────────────────────────────────────
+    // Filter alerts in table and map
+    // ────────────────────────────────────────────────
+    function filterAlerts() {
+      const tbody = document.getElementById('alert-table-body');
+      const rows = tbody.getElementsByTagName('tr');
 
-          if (result.success) {
-            alert("Status updated!");
+      // Filter table rows
+      for (let row of rows) {
+        const dateCell = row.cells[0];
+        const timestampStr = dateCell.textContent.trim();
+
+        let showRow = true;
+
+        if (timeFilterDays !== Infinity && timestampStr) {
+          const ms = parseGoogleDateToMs(timestampStr);
+          if (ms) {
+            const daysOld = (Date.now() - ms) / (1000 * 60 * 60 * 24);
+            showRow = daysOld <= timeFilterDays;
+          }
+        }
+
+        row.style.display = showRow ? '' : 'none';
+      }
+
+      // Filter map markers (hide/show based on time filter)
+      markersCluster.eachLayer(marker => {
+        const popupContent = marker.getPopup().getContent();
+        const reportedLine = popupContent.match(/Reported: (.*)<br>/);
+        if (reportedLine) {
+          const timestampStr = reportedLine[1].trim();
+          let showMarker = true;
+
+          if (timeFilterDays !== Infinity && timestampStr) {
+            const ms = parseGoogleDateToMs(timestampStr);
+            if (ms) {
+              const daysOld = (Date.now() - ms) / (1000 * 60 * 60 * 24);
+              showMarker = daysOld <= timeFilterDays;
+            }
+          }
+
+          if (showMarker) {
+            marker.addTo(markersCluster);
           } else {
-            alert("Failed to update: " + (result.error || "Unknown error"));
-            this.value = alert.status; // revert
+            markersCluster.removeLayer(marker);
           }
         }
       });
-    });
 
-    // View on map handler
-    document.querySelectorAll('.view-btn').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const lat = parseFloat(this.dataset.lat);
-        const lng = parseFloat(this.dataset.lng);
-        if (!isNaN(lat) && !isNaN(lng)) {
-          map.setView([lat, lng], 16);
-        } else {
-          alert("No location data for this alert.");
+      // Auto-fit map after filtering
+      setTimeout(() => {
+        const bounds = markersCluster.getBounds();
+        if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [50, 50] });
         }
-      });
-    });
+      }, 400);
+    }
+
+    // Helper: parse Google Sheets Date(...) string to milliseconds
+    function parseGoogleDateToMs(str) {
+      if (!str || !str.startsWith('Date(')) return null;
+      const match = str.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
+      if (!match) return null;
+      const [, year, month0, day, hour, min, sec] = match.map(Number);
+      const date = new Date(year, month0, day, hour, min, sec);
+      return date.getTime();
+    }
 
     // Logout handler
     document.getElementById('logout').addEventListener('click', () => {
