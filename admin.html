@@ -4,13 +4,14 @@
   <title>SouthCoastWatch Admin Dashboard</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
- 
+
   <!-- Leaflet core (same as public page) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
   <style>
     body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
     h1 { text-align: center; color: #1a3c6d; margin-bottom: 10px; }
@@ -31,34 +32,8 @@
   <div id="admin-panel">
     <h1>SouthCoastWatch Admin Dashboard</h1>
     <button class="logout-btn" id="logout">Logout</button>
-    <div id="map"></div>
 
-    <!-- Admin Filters Panel -->
-    <details id="admin-filters" style="max-width: 800px; margin: 0 auto 20px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden;">
-      <summary style="padding: 14px; font-weight: bold; background: #e3f2fd; cursor: pointer; font-size: 1.1em; border-radius: 8px;">
-        Filter Alerts
-      </summary>
-      <div style="padding: 16px;">
-        <div id="admin-type-filters" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px;">
-          <!-- Checkboxes will be generated here -->
-        </div>
-        <div class="time-radio-group" style="margin-top: 20px; display: flex; flex-direction: column; gap: 8px; align-items: center;">
-          <label><input type="radio" name="adminTimeFilter" value="all" checked> All time</label>
-          <label><input type="radio" name="adminTimeFilter" value="7"> Last 7 days</label>
-          <label><input type="radio" name="adminTimeFilter" value="3"> Last 3 days</label>
-          <label><input type="radio" name="adminTimeFilter" value="1"> Last 24 hours</label>
-        </div>
-        <div style="margin-top: 20px; text-align: center;">
-          <label style="cursor: pointer; font-size: 0.95em;">
-            <input type="checkbox" id="admin-active-only" checked>
-            Show only active / unresolved alerts
-          </label>
-        </div>
-        <button id="admin-reset-filters" style="display: block; margin: 20px auto 0; padding: 10px 20px; background: #757575; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1em;">
-          Reset Filters
-        </button>
-      </div>
-    </details>
+    <div id="map"></div>
 
     <table id="alert-table">
       <thead>
@@ -90,7 +65,7 @@
       window.location.href = "/";
     }
 
-    // Alert colors
+    // Alert colors (same as public dashboard)
     const alertColors = {
       "general": { fill: "#d32f2f", border: "#b71c1c" },
       "red wave": { fill: "#1976d2", border: "#0d47a1" },
@@ -103,7 +78,7 @@
       "other": { fill: "#424242", border: "#212121" }
     };
 
-    // Zone fallback centers
+    // Zone fallback centers (same as public dashboard)
     const zoneCenters = {
       "Highway West": [-30.464248, 30.637618],
       "Sea East": [-30.90, 30.45],
@@ -113,27 +88,8 @@
       "Unknown": [-30.85, 30.35]
     };
 
-    // Filter state
-    let adminAllAlerts = [];
-    let adminAllMarkers = [];
-    let adminActiveTypes = new Set();
-    let adminTimeFilterDays = Infinity;
-    let adminShowActiveOnly = true;
-
-    const adminAlertTypesConfig = [
-      { key: "general", label: "General/Suspicious" },
-      { key: "red wave", label: "Red Wave (Flood)" },
-      { key: "amber blaze", label: "Amber Blaze (Fire Hazard)" },
-      { key: "scam", label: "Scam/Doorstep" },
-      { key: "electrical", label: "Electrical Fault" },
-      { key: "water", label: "Water Leak/Interruption" },
-      { key: "illegal dumping", label: "Illegal Dumping" },
-      { key: "municipal", label: "Municipal (Potholes/Lights/Bushes)" },
-      { key: "other", label: "Other" }
-    ];
-
     // ────────────────────────────────────────────────
-    // Initialize map + cluster group
+    // INITIALIZE MAP & CLUSTER GROUP (same as public dashboard)
     // ────────────────────────────────────────────────
     const map = L.map('map', {
       center: [-30.85, 30.35],
@@ -154,14 +110,17 @@
           const t = m.options.alertType || 'other';
           typeCounts[t] = (typeCounts[t] || 0) + 1;
         });
-        let dominant = 'other';
-        let max = 0;
+        let dominantType = 'other';
+        let maxCount = 0;
         for (const t in typeCounts) {
-          if (typeCounts[t] > max) { max = typeCounts[t]; dominant = t; }
+          if (typeCounts[t] > maxCount) {
+            maxCount = typeCounts[t];
+            dominantType = t;
+          }
         }
-        const color = alertColors[dominant]?.fill || '#424242';
+        const color = alertColors[dominantType]?.fill || '#424242';
         return L.divIcon({
-          html: `<div style="background:${color};color:white;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;border:3px solid #fff;">${cluster.getChildCount()}</div>`,
+          html: `<div style="background-color:${color};color:white;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;border:3px solid #fff;">${cluster.getChildCount()}</div>`,
           className: 'custom-cluster',
           iconSize: [40, 40]
         });
@@ -170,354 +129,246 @@
     map.addLayer(markersCluster);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19
     }).addTo(map);
 
     // ────────────────────────────────────────────────
-    // Auth check
+    // Verify admin credentials server-side
     // ────────────────────────────────────────────────
     async function verifyAdminAuth() {
       const params = new URLSearchParams({
         action: "check-auth",
-        email: storedAuth.email.trim(),
-        token: storedAuth.token.trim()
+        email: storedAuth.email,
+        token: storedAuth.token
       });
 
       try {
-        const res = await fetch(`${SCRIPT_URL}?${params}`);
-        const data = await res.json();
+        const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+        const data = await response.json();
+
         console.log("Server auth response:", data);
+
         if (!data.success || !data.isAdmin) {
-          alert("Session invalid. Please log in again.");
+          alert("Session invalid or expired. Please log in again.");
           localStorage.removeItem('adminAuth');
           window.location.href = "/";
           return false;
         }
+
         return true;
       } catch (err) {
-        console.error("Auth failed:", err);
-        document.getElementById('error').textContent = "Auth check failed.";
+        console.error("Auth check failed", err);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error').textContent = "Failed to verify admin access. Try again.";
         document.getElementById('error').style.display = 'block';
         return false;
       }
     }
 
     // ────────────────────────────────────────────────
-    // Load alerts + create persistent markers
+    // Load and display alerts (only after auth is valid)
     // ────────────────────────────────────────────────
     async function loadAlerts() {
-      document.getElementById('loading').textContent = "Verifying access...";
-      if (!(await verifyAdminAuth())) return;
-
-      document.getElementById('loading').textContent = "Loading alerts...";
+      const isValid = await verifyAdminAuth();
+      if (!isValid) return;
 
       try {
         const params = new URLSearchParams({
           action: "get-alerts",
-          email: storedAuth.email.trim(),
-          token: storedAuth.token.trim()
+          email: storedAuth.email,
+          token: storedAuth.token
         });
 
-        const res = await fetch(`${SCRIPT_URL}?${params}`);
-        const data = await res.json();
+        const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+        const data = await response.json();
 
-        if (!data.success) throw new Error(data.error || "Failed to load alerts");
+        if (!data.success) {
+          throw new Error(data.error || "Failed to load alerts");
+        }
 
-        adminAllAlerts = data.alerts;
-        console.log("Total alerts loaded:", adminAllAlerts.length);
+        // Populate table
+        const tbody = document.getElementById('alert-table-body');
+        tbody.innerHTML = '';
 
-        // Create persistent markers once
-        adminAllMarkers = [];
-        markersCluster.clearLayers();
+        data.alerts.forEach(alert => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${alert.timestamp || '—'}</td>
+            <td>${alert.type || 'Other'}</td>
+            <td>${alert.zone || 'Unknown'}</td>
+            <td>${alert.reporter || 'Anonymous'}</td>
+            <td>
+              <select class="status-select" data-id="${alert.row}">
+                <option value="pending" ${alert.status === 'pending' ? 'selected' : ''}>Pending</option>
+                <option value="in-progress" ${alert.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+                <option value="resolved" ${alert.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+              </select>
+            </td>
+            <td><button class="view-btn" data-lat="${alert.lat || ''}" data-lng="${alert.lng || ''}">View on Map</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
 
-adminAllMarkers = [];
-markersCluster.clearLayers();
+        // Status change handler
+        document.querySelectorAll('.status-select').forEach(select => {
+          select.addEventListener('change', async function() {
+            const row = this.dataset.id;
+            const newStatus = this.value;
 
-adminAllAlerts.forEach(alert => {
-  let lat = parseFloat(alert.lat);
-  let lng = parseFloat(alert.lng);
+            if (confirm(`Change status to "${newStatus}"?`)) {
+              const params = new URLSearchParams({
+                action: "update-status",
+                row: row,
+                status: newStatus,
+                email: storedAuth.email,
+                token: storedAuth.token
+              });
 
-  if (isNaN(lat) || isNaN(lng)) {
-    const fb = zoneCenters[alert.zone] || zoneCenters["Unknown"];
-    lat = fb[0];
-    lng = fb[1];
-  }
+              const response = await fetch(`${SCRIPT_URL}?${params}`);
+              const result = await response.json();
 
-  if (!isNaN(lat) && !isNaN(lng)) {
-    let colorInfo = alertColors["other"];
-    let finalType = "other";
-
-    // Use raw type string from sheet (same as public)
-    const alertTypeRaw = alert.type || "Other";
-    const alertType = alertTypeRaw.toLowerCase().trim();
-
-    if (alertType.includes("general") || alertType.includes("suspicious")) {
-      colorInfo = alertColors["general"];
-      finalType = "general";
-    }
-    else if (alertType.includes("red wave") || alertType.includes("flood")) {
-      colorInfo = alertColors["red wave"];
-      finalType = "red wave";
-    }
-    else if (alertType.includes("amber blaze") || alertType.includes("fire") || alertType.includes("hazard")) {
-      colorInfo = alertColors["amber blaze"];
-      finalType = "amber blaze";
-    }
-    else if (alertType.includes("scam") || alertType.includes("doorstep")) {
-      colorInfo = alertColors["scam"];
-      finalType = "scam";
-    }
-    else if (alertType.includes("electrical") || alertType.includes("fault")) {
-      colorInfo = alertColors["electrical"];
-      finalType = "electrical";
-    }
-    else if (alertType.includes("water") || alertType.includes("leak") || alertType.includes("interruption")) {
-      colorInfo = alertColors["water"];
-      finalType = "water";
-    }
-    else if (alertType.includes("illegal dumping")) {
-      colorInfo = alertColors["illegal dumping"];
-      finalType = "illegal dumping";
-    }
-    else if (alertType.includes("municipal") || alertType.includes("pothole") || alertType.includes("light") || alertType.includes("bush")) {
-      colorInfo = alertColors["municipal"];
-      finalType = "municipal";
-    }
-    else {
-      colorInfo = alertColors["other"];
-      finalType = "other";
-    }
-
-    const marker = L.circleMarker([lat, lng], {
-      radius: 10,
-      fillColor: colorInfo.fill,
-      color: colorInfo.border,
-      weight: 2,
-      opacity: 1,
-      fillOpacity: 0.85
-    });
-
-    marker.bindPopup(`
-      <b>${alert.type || 'Other'} - ${alert.zone || 'Unknown'}</b><br>
-      Reported: ${alert.timestamp || 'Unknown'}<br>
-      By: ${alert.reporter || 'Anonymous'}<br>
-      Status: ${alert.status || 'Unspecified'}<br>
-      ${alert.photo ? `<a href="${alert.photo}" target="_blank">View Photo</a>` : ''}
-    `);
-
-    marker.options.alertType = finalType;
-    marker.options.status = alert.status || '';
-    marker.options.timestamp = alert.timestamp || '';
-    marker.options.row = alert.row;
-
-    marker.addTo(markersCluster);
-    adminAllMarkers.push(marker);
-  }
-});
-
-        // Initial auto-fit
-        setTimeout(() => {
-          console.log("Initial markers:", markersCluster.getLayers().length);
-          if (markersCluster.getLayers().length > 0) {
-            const bounds = markersCluster.getBounds();
-            if (bounds.isValid()) {
-              map.fitBounds(bounds, { padding: [50, 50] });
+              if (result.success) {
+                alert("Status updated!");
+              } else {
+                alert("Failed to update: " + (result.error || "Unknown error"));
+                this.value = alert.status; // revert
+              }
             }
+          });
+        });
+
+        // View on map handler
+        document.querySelectorAll('.view-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const lat = parseFloat(this.dataset.lat);
+            const lng = parseFloat(this.dataset.lng);
+            if (!isNaN(lat) && !isNaN(lng)) {
+              map.setView([lat, lng], 16);
+            } else {
+              alert("No location data for this alert.");
+            }
+          });
+        });
+
+        // Add markers (same logic as public dashboard - all markers created once on load)
+        data.alerts.forEach(alert => {
+          let lat = parseFloat(alert.lat);
+          let lng = parseFloat(alert.lng);
+
+          // Fallback if coords missing or invalid
+          if (isNaN(lat) || isNaN(lng)) {
+            const fallback = zoneCenters[alert.zone] || zoneCenters["Unknown"];
+            lat = fallback[0];
+            lng = fallback[1];
           }
-        }, 800);
 
-        // Populate type filters
-        const typeDiv = document.getElementById('admin-type-filters');
-        adminAlertTypesConfig.forEach(t => {
-          const lbl = document.createElement('label');
-          lbl.style = 'display:flex;align-items:center;gap:6px;cursor:pointer;';
-          lbl.innerHTML = `<input type="checkbox" class="admin-type-checkbox" value="${t.key}" checked> ${t.label}`;
-          typeDiv.appendChild(lbl);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            let colorInfo = alertColors["other"];
+            let finalType = "other";
+
+            const typeLower = (alert.type || "").toLowerCase().trim();
+            if (typeLower.includes("general") || typeLower.includes("suspicious")) { colorInfo = alertColors["general"]; finalType = "general"; }
+            else if (typeLower.includes("red wave") || typeLower.includes("flood")) { colorInfo = alertColors["red wave"]; finalType = "red wave"; }
+            else if (typeLower.includes("amber blaze") || typeLower.includes("fire") || typeLower.includes("hazard")) { colorInfo = alertColors["amber blaze"]; finalType = "amber blaze"; }
+            else if (typeLower.includes("scam") || typeLower.includes("doorstep")) { colorInfo = alertColors["scam"]; finalType = "scam"; }
+            else if (typeLower.includes("electrical") || typeLower.includes("fault")) { colorInfo = alertColors["electrical"]; finalType = "electrical"; }
+            else if (typeLower.includes("water") || typeLower.includes("leak") || typeLower.includes("interruption")) { colorInfo = alertColors["water"]; finalType = "water"; }
+            else if (typeLower.includes("illegal dumping")) { colorInfo = alertColors["illegal dumping"]; finalType = "illegal dumping"; }
+            else if (typeLower.includes("municipal") || typeLower.includes("pothole") || typeLower.includes("light") || typeLower.includes("bush")) { colorInfo = alertColors["municipal"]; finalType = "municipal"; }
+
+            const marker = L.circleMarker([lat, lng], {
+              radius: 10,
+              fillColor: colorInfo.fill,
+              color: colorInfo.border,
+              weight: 2,
+              opacity: 1,
+              fillOpacity: 0.85
+            });
+
+            marker.bindPopup(`
+              <b>${alert.type || 'Other'} - ${alert.zone || 'Unknown'}</b><br>
+              Reported: ${alert.timestamp || 'Unknown'}<br>
+              By: ${alert.reporter || 'Anonymous'}<br>
+              Status: ${alert.status || 'Unspecified'}<br>
+              ${alert.photo ? `<a href="${alert.photo}" target="_blank">View Photo</a>` : ''}
+            `);
+
+            marker.options.alertType = finalType;
+            marker.addTo(markersCluster);
+          }
         });
 
-        // Set defaults to show everything
-        adminActiveTypes = new Set(adminAlertTypesConfig.map(t => t.key));
-        adminTimeFilterDays = Infinity;
-        adminShowActiveOnly = false;
-
-        // Sync UI
-        document.querySelector('input[name="adminTimeFilter"][value="all"]').checked = true;
-        document.getElementById('admin-active-only').checked = false;
-        document.querySelectorAll('.admin-type-checkbox').forEach(cb => cb.checked = true);
-
-        // Filter listeners
-        document.querySelectorAll('.admin-type-checkbox').forEach(cb => {
-          cb.addEventListener('change', () => {
-            cb.checked ? adminActiveTypes.add(cb.value) : adminActiveTypes.delete(cb.value);
-            applyAdminFilters();
-          });
-        });
-
-        document.querySelectorAll('input[name="adminTimeFilter"]').forEach(r => {
-          r.addEventListener('change', () => {
-            adminTimeFilterDays = r.value === 'all' ? Infinity : Number(r.value);
-            applyAdminFilters();
-          });
-        });
-
-        document.getElementById('admin-active-only').addEventListener('change', e => {
-          adminShowActiveOnly = e.target.checked;
-          applyAdminFilters();
-        });
-
-        document.getElementById('admin-reset-filters').addEventListener('click', () => {
-          document.querySelectorAll('.admin-type-checkbox').forEach(cb => {
-            cb.checked = true;
-            adminActiveTypes.add(cb.value);
-          });
-          document.querySelector('input[name="adminTimeFilter"][value="all"]').checked = true;
-          adminTimeFilterDays = Infinity;
-          document.getElementById('admin-active-only').checked = true;
-          adminShowActiveOnly = false;
-          applyAdminFilters();
-        });
-
-        // Initial render
-        applyAdminFilters();
+        // Auto-fit map to all markers after loading (same timing as public dashboard)
+        setTimeout(() => {
+          const bounds = markersCluster.getBounds();
+          if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [50, 50] });
+          } else {
+            map.setView([-30.85, 30.35], 12);
+          }
+        }, 400);
 
         document.getElementById('loading').style.display = 'none';
 
       } catch (err) {
-        console.error("Load error:", err);
+        console.error("Error loading alerts:", err);
         document.getElementById('loading').style.display = 'none';
-        document.getElementById('error').textContent = err.message;
+        document.getElementById('error').textContent = "Could not load alerts: " + err.message;
         document.getElementById('error').style.display = 'block';
       }
     }
 
-    // ────────────────────────────────────────────────
-    // Apply filters (add/remove existing markers)
-    // ────────────────────────────────────────────────
-    function applyAdminFilters() {
-      markersCluster.clearLayers();
+    // Status change handler
+    document.querySelectorAll('.status-select').forEach(select => {
+      select.addEventListener('change', async function() {
+        const row = this.dataset.id;
+        const newStatus = this.value;
 
-      adminAllMarkers.forEach(marker => {
-        const alert = adminAllAlerts.find(a => a.row === marker.options.row);
-        if (!alert) return;
+        if (confirm(`Change status to "${newStatus}"?`)) {
+          const params = new URLSearchParams({
+            action: "update-status",
+            row: row,
+            status: newStatus,
+            email: storedAuth.email,
+            token: storedAuth.token
+          });
 
-        const type = (alert.type || 'other').toLowerCase().trim();
-        const typeMatch = adminActiveTypes.size === 0 || adminActiveTypes.has(type);
+          const response = await fetch(`${SCRIPT_URL}?${params}`);
+          const result = await response.json();
 
-        let timeMatch = true;
-        if (adminTimeFilterDays !== Infinity && alert.timestamp) {
-          const ms = parseGoogleDateToMs(alert.timestamp);
-          if (ms) {
-            const daysOld = (Date.now() - ms) / 86400000;
-            timeMatch = daysOld <= adminTimeFilterDays;
+          if (result.success) {
+            alert("Status updated!");
+          } else {
+            alert("Failed to update: " + (result.error || "Unknown error"));
+            this.value = alert.status; // revert
           }
-        }
-
-        const activeMatch = !adminShowActiveOnly || (alert.status || '').toLowerCase() !== 'resolved';
-
-        if (typeMatch && timeMatch && activeMatch) {
-          marker.addTo(markersCluster);
         }
       });
+    });
 
-      // Auto-fit
-      setTimeout(() => {
-        console.log("Filtered markers:", markersCluster.getLayers().length);
-        if (markersCluster.getLayers().length > 0) {
-          const bounds = markersCluster.getBounds();
-          if (bounds.isValid()) {
-            map.fitBounds(bounds, { padding: [50, 50] });
-          }
+    // View on map handler
+    document.querySelectorAll('.view-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const lat = parseFloat(this.dataset.lat);
+        const lng = parseFloat(this.dataset.lng);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          map.setView([lat, lng], 16);
+        } else {
+          alert("No location data for this alert.");
         }
-      }, 400);
-
-      // Update table
-      const tbody = document.getElementById('alert-table-body');
-      tbody.innerHTML = '';
-      adminAllAlerts.filter(a => {
-        const type = (a.type || 'other').toLowerCase().trim();
-        const typeMatch = adminActiveTypes.size === 0 || adminActiveTypes.has(type);
-
-        let timeMatch = true;
-        if (adminTimeFilterDays !== Infinity && a.timestamp) {
-          const ms = parseGoogleDateToMs(a.timestamp);
-          if (ms) {
-            const daysOld = (Date.now() - ms) / 86400000;
-            timeMatch = daysOld <= adminTimeFilterDays;
-          }
-        }
-
-        const activeMatch = !adminShowActiveOnly || (a.status || '').toLowerCase() !== 'resolved';
-
-        return typeMatch && timeMatch && activeMatch;
-      }).forEach(a => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${a.timestamp || '—'}</td>
-          <td>${a.type || 'Other'}</td>
-          <td>${a.zone || 'Unknown'}</td>
-          <td>${a.reporter || 'Anonymous'}</td>
-          <td>
-            <select class="status-select" data-row="${a.row}">
-              <option value="pending" ${a.status === 'pending' ? 'selected' : ''}>Pending</option>
-              <option value="in-progress" ${a.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
-              <option value="resolved" ${a.status === 'resolved' ? 'selected' : ''}>Resolved</option>
-            </select>
-          </td>
-          <td><button class="view-btn" data-lat="${a.lat||''}" data-lng="${a.lng||''}">View on Map</button></td>
-        `;
-        tbody.appendChild(tr);
       });
+    });
 
-      // Re-attach listeners
-      document.querySelectorAll('.status-select').forEach(s => s.addEventListener('change', updateStatus));
-      document.querySelectorAll('.view-btn').forEach(b => b.addEventListener('click', zoomToMarker));
-    }
-
-    // Helpers
-    function parseGoogleDateToMs(str) {
-      if (!str || !str.startsWith('Date(')) return null;
-      const m = str.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
-      if (!m) return null;
-      const [,y,mo,d,h,mi,s] = m.map(Number);
-      return new Date(y, mo, d, h, mi, s).getTime();
-    }
-
-    async function updateStatus() {
-      const row = this.dataset.row;
-      const status = this.value;
-      if (!confirm(`Set status to "${status}"?`)) {
-        this.value = this.dataset.current || 'pending';
-        return;
-      }
-      const p = new URLSearchParams({ action:"update-status", row, status, email:storedAuth.email.trim(), token:storedAuth.token.trim() });
-      try {
-        const r = await fetch(`${SCRIPT_URL}?${p}`);
-        const res = await r.json();
-        if (res.success) alert("Updated");
-        else alert("Failed: " + (res.error || "Unknown"));
-      } catch {
-        alert("Network error");
-        this.value = this.dataset.current || 'pending';
-      }
-    }
-
-    function zoomToMarker() {
-      const lat = parseFloat(this.dataset.lat);
-      const lng = parseFloat(this.dataset.lng);
-      if (!isNaN(lat) && !isNaN(lng)) map.setView([lat, lng], 15);
-      else alert("No location data");
-    }
-
-    // Logout
+    // Logout handler
     document.getElementById('logout').addEventListener('click', () => {
-      if (confirm("Logout?")) {
+      if (confirm("Are you sure you want to logout?")) {
         localStorage.removeItem('adminAuth');
         window.location.href = "/";
       }
     });
 
-    // Start
+    // Start loading alerts
     loadAlerts();
   </script>
 </body>
