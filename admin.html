@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Leaflet core (same as public page) -->
+  <!-- Leaflet core -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
@@ -38,7 +38,7 @@
 
     <div id="map"></div>
 
-    <!-- Temporal Filter Dropdown (same options as public app) -->
+    <!-- Temporal Filter Dropdown -->
     <div class="filter-controls">
       <label for="timeFilter">Show alerts from:</label>
       <select id="timeFilter">
@@ -79,7 +79,10 @@
       window.location.href = "/";
     }
 
-    // Alert colors (same as public dashboard)
+    // Global variable to store all alerts (for filtering)
+    let allAlerts = [];
+
+    // Alert colors
     const alertColors = {
       "general": { fill: "#d32f2f", border: "#b71c1c" },
       "red wave": { fill: "#1976d2", border: "#0d47a1" },
@@ -92,7 +95,7 @@
       "other": { fill: "#424242", border: "#212121" }
     };
 
-    // Zone fallback centers (same as public dashboard)
+    // Zone fallback centers
     const zoneCenters = {
       "Highway West": [-30.464248, 30.637618],
       "Sea East": [-30.90, 30.45],
@@ -103,7 +106,7 @@
     };
 
     // ────────────────────────────────────────────────
-    // INITIALIZE MAP & CLUSTER GROUP (same as public dashboard)
+    // INITIALIZE MAP & CLUSTER GROUP
     // ────────────────────────────────────────────────
     const map = L.map('map', {
       center: [-30.85, 30.35],
@@ -181,7 +184,7 @@
     }
 
     // ────────────────────────────────────────────────
-    // Load and display alerts (only after auth is valid)
+    // Load alerts once
     // ────────────────────────────────────────────────
     async function loadAlerts() {
       const isValid = await verifyAdminAuth();
@@ -201,11 +204,15 @@
           throw new Error(data.error || "Failed to load alerts");
         }
 
+        // Store all alerts globally
+        allAlerts = data.alerts;
+        console.log("Loaded alerts:", allAlerts.length);
+
         // Populate table
         const tbody = document.getElementById('alert-table-body');
         tbody.innerHTML = '';
 
-        data.alerts.forEach(alert => {
+        allAlerts.forEach(alert => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${alert.timestamp || '—'}</td>
@@ -265,8 +272,8 @@
           });
         });
 
-        // Add markers (same logic as public dashboard - all markers created once on load)
-        data.alerts.forEach(alert => {
+        // Add all markers once on load
+        allAlerts.forEach(alert => {
           let lat = parseFloat(alert.lat);
           let lng = parseFloat(alert.lng);
 
@@ -309,12 +316,12 @@
             `);
 
             marker.options.alertType = finalType;
-            marker.options.timestamp = alert.timestamp || ''; // for filtering
+            marker.options.timestamp = alert.timestamp || ''; // store for filtering
             marker.addTo(markersCluster);
           }
         });
 
-        // Auto-fit map to all markers after loading (same timing as public dashboard)
+        // Initial auto-fit
         setTimeout(() => {
           const bounds = markersCluster.getBounds();
           if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
@@ -335,7 +342,7 @@
     }
 
     // ────────────────────────────────────────────────
-    // Temporal filter logic (same as public dashboard)
+    // Temporal filter logic
     // ────────────────────────────────────────────────
     let timeFilterDays = Infinity;
 
@@ -353,84 +360,81 @@
     // Filter alerts in table and map
     // ────────────────────────────────────────────────
     function filterAlerts() {
-  const tbody = document.getElementById('alert-table-body');
-  const rows = tbody.getElementsByTagName('tr');
+      const tbody = document.getElementById('alert-table-body');
+      const rows = tbody.getElementsByTagName('tr');
 
-  // 1. Filter table rows (hide/show <tr>)
-  for (let row of rows) {
-    const dateCell = row.cells[0];
-    const timestampStr = dateCell.textContent.trim();
+      // Filter table rows
+      for (let row of rows) {
+        const dateCell = row.cells[0];
+        const timestampStr = dateCell.textContent.trim();
 
-    let showRow = true;
+        let showRow = true;
 
-    if (timeFilterDays !== Infinity && timestampStr) {
-      const ms = parseGoogleDateToMs(timestampStr);
-      if (ms) {
-        const daysOld = (Date.now() - ms) / (1000 * 60 * 60 * 24);
-        showRow = daysOld <= timeFilterDays;
+        if (timeFilterDays !== Infinity && timestampStr) {
+          const ms = parseGoogleDateToMs(timestampStr);
+          if (ms) {
+            const daysOld = (Date.now() - ms) / (1000 * 60 * 60 * 24);
+            showRow = daysOld <= timeFilterDays;
+          }
+        }
+
+        row.style.display = showRow ? '' : 'none';
       }
+
+      // Filter markers: clear and re-add only those that match
+      markersCluster.clearLayers();
+
+      allAlerts.forEach(alert => {
+        let showMarker = true;
+
+        if (timeFilterDays !== Infinity && alert.timestamp) {
+          const ms = parseGoogleDateToMs(alert.timestamp);
+          if (ms) {
+            const daysOld = (Date.now() - ms) / (1000 * 60 * 60 * 24);
+            showMarker = daysOld <= timeFilterDays;
+          }
+        }
+
+        if (showMarker) {
+          // Find and re-add the marker for this alert
+          const marker = Array.from(markersCluster.getLayers()).find(m => m.options.timestamp === alert.timestamp);
+          if (marker) {
+            marker.addTo(markersCluster);
+          }
+        }
+      });
+
+      // Auto-fit to visible markers
+      setTimeout(() => {
+        const bounds = markersCluster.getBounds();
+        if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [50, 50] });
+        }
+      }, 400);
     }
 
-    row.style.display = showRow ? '' : 'none';
-  }
+    // Helper: parse timestamp string to milliseconds
+    function parseGoogleDateToMs(str) {
+      if (!str) return null;
 
-  // 2. Filter map markers: clear cluster and re-add only matching ones
-  markersCluster.clearLayers();
-
-  data.alerts.forEach(alert => {
-    let showMarker = true;
-
-    if (timeFilterDays !== Infinity && alert.timestamp) {
-      const ms = parseGoogleDateToMs(alert.timestamp);
-      if (ms) {
-        const daysOld = (Date.now() - ms) / (1000 * 60 * 60 * 24);
-        showMarker = daysOld <= timeFilterDays;
+      // Try ISO format first (admin app uses this)
+      const isoDate = new Date(str);
+      if (!isNaN(isoDate.getTime())) {
+        return isoDate.getTime();
       }
-    }
 
-    if (showMarker) {
-      // Find the existing marker for this alert (by row ID)
-      const existingMarker = adminAllMarkers.find(m => m.options.row === alert.row);
-      if (existingMarker) {
-        existingMarker.addTo(markersCluster);
+      // Fall back to Google Sheets Date(...) format
+      if (str.startsWith('Date(')) {
+        const match = str.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
+        if (match) {
+          const [, year, month0, day, hour, min, sec] = match.map(Number);
+          return new Date(year, month0, day, hour, min, sec).getTime();
+        }
       }
+
+      console.warn("Unrecognized timestamp:", str);
+      return null;
     }
-  });
-
-  // 3. Auto-fit map to currently visible markers
-  setTimeout(() => {
-    const bounds = markersCluster.getBounds();
-    if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [50, 50] });
-    } else {
-      map.setView([-30.85, 30.35], 12);
-    }
-  }, 400);
-}
-
-    // Helper: parse Google Sheets Date(...) string to milliseconds
-   function parseGoogleDateToMs(str) {
-  if (!str) return null;
-
-  // Format 1: Google Sheets serialized Date(...) string
-  if (str.startsWith('Date(')) {
-    const match = str.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
-    if (match) {
-      const [, year, month0, day, hour, min, sec] = match.map(Number);
-      return new Date(year, month0, day, hour, min, sec).getTime();
-    }
-  }
-
-  // Format 2: ISO 8601 string (e.g. 2026-02-17T17:59:05.498Z)
-  const isoDate = new Date(str);
-  if (!isNaN(isoDate.getTime())) {
-    return isoDate.getTime();
-  }
-
-  // If neither format matches
-  console.warn("Unrecognized timestamp format:", str);
-  return null;
-}
 
     // Logout handler
     document.getElementById('logout').addEventListener('click', () => {
