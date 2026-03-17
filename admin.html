@@ -235,7 +235,7 @@
       adminAllAlerts.forEach(alert => {
         let lat = alert.lat;
         let lng = alert.lng;
-
+if (isNaN(lat) || isNaN(lng))
         if (isNaN(lat) || isNaN(lng)) {
           const fb = zoneCenters[alert.zone] || zoneCenters["Unknown"];
           lat = fb[0];
