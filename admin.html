@@ -309,6 +309,7 @@
             `);
 
             marker.options.alertType = finalType;
+            marker.options.timestamp = alert.timestamp || ''; // for filtering
             marker.addTo(markersCluster);
           }
         });
@@ -373,7 +374,7 @@
         row.style.display = showRow ? '' : 'none';
       }
 
-      // Filter map markers (hide/show based on time filter)
+      // Filter map markers (hide/show existing markers)
       markersCluster.eachLayer(marker => {
         const popupContent = marker.getPopup().getContent();
         const reportedLine = popupContent.match(/Reported: (.*)<br>/);
@@ -390,14 +391,16 @@
           }
 
           if (showMarker) {
-            marker.addTo(markersCluster);
+            if (!markersCluster.hasLayer(marker)) {
+              marker.addTo(markersCluster);
+            }
           } else {
             markersCluster.removeLayer(marker);
           }
         }
       });
 
-      // Auto-fit map after filtering
+      // Auto-fit map to visible markers after filtering
       setTimeout(() => {
         const bounds = markersCluster.getBounds();
         if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
