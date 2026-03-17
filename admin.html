@@ -353,61 +353,60 @@
     // Filter alerts in table and map
     // ────────────────────────────────────────────────
     function filterAlerts() {
-      const tbody = document.getElementById('alert-table-body');
-      const rows = tbody.getElementsByTagName('tr');
+  const tbody = document.getElementById('alert-table-body');
+  const rows = tbody.getElementsByTagName('tr');
 
-      // Filter table rows
-      for (let row of rows) {
-        const dateCell = row.cells[0];
-        const timestampStr = dateCell.textContent.trim();
+  // 1. Filter table rows (hide/show <tr>)
+  for (let row of rows) {
+    const dateCell = row.cells[0];
+    const timestampStr = dateCell.textContent.trim();
 
-        let showRow = true;
+    let showRow = true;
 
-        if (timeFilterDays !== Infinity && timestampStr) {
-          const ms = parseGoogleDateToMs(timestampStr);
-          if (ms) {
-            const daysOld = (Date.now() - ms) / (1000 * 60 * 60 * 24);
-            showRow = daysOld <= timeFilterDays;
-          }
-        }
-
-        row.style.display = showRow ? '' : 'none';
+    if (timeFilterDays !== Infinity && timestampStr) {
+      const ms = parseGoogleDateToMs(timestampStr);
+      if (ms) {
+        const daysOld = (Date.now() - ms) / (1000 * 60 * 60 * 24);
+        showRow = daysOld <= timeFilterDays;
       }
-
-      // Filter map markers (hide/show existing markers)
-      markersCluster.eachLayer(marker => {
-        const popupContent = marker.getPopup().getContent();
-        const reportedLine = popupContent.match(/Reported: (.*)<br>/);
-        if (reportedLine) {
-          const timestampStr = reportedLine[1].trim();
-          let showMarker = true;
-
-          if (timeFilterDays !== Infinity && timestampStr) {
-            const ms = parseGoogleDateToMs(timestampStr);
-            if (ms) {
-              const daysOld = (Date.now() - ms) / (1000 * 60 * 60 * 24);
-              showMarker = daysOld <= timeFilterDays;
-            }
-          }
-
-          if (showMarker) {
-            if (!markersCluster.hasLayer(marker)) {
-              marker.addTo(markersCluster);
-            }
-          } else {
-            markersCluster.removeLayer(marker);
-          }
-        }
-      });
-
-      // Auto-fit map to visible markers after filtering
-      setTimeout(() => {
-        const bounds = markersCluster.getBounds();
-        if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
-          map.fitBounds(bounds, { padding: [50, 50] });
-        }
-      }, 400);
     }
+
+    row.style.display = showRow ? '' : 'none';
+  }
+
+  // 2. Filter map markers: clear cluster and re-add only matching ones
+  markersCluster.clearLayers();
+
+  data.alerts.forEach(alert => {
+    let showMarker = true;
+
+    if (timeFilterDays !== Infinity && alert.timestamp) {
+      const ms = parseGoogleDateToMs(alert.timestamp);
+      if (ms) {
+        const daysOld = (Date.now() - ms) / (1000 * 60 * 60 * 24);
+        showMarker = daysOld <= timeFilterDays;
+      }
+    }
+
+    if (showMarker) {
+      // Find the existing marker for this alert (by row ID)
+      const existingMarker = adminAllMarkers.find(m => m.options.row === alert.row);
+      if (existingMarker) {
+        existingMarker.addTo(markersCluster);
+      }
+    }
+  });
+
+  // 3. Auto-fit map to currently visible markers
+  setTimeout(() => {
+    const bounds = markersCluster.getBounds();
+    if (markersCluster.getLayers().length > 0 && bounds && bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    } else {
+      map.setView([-30.85, 30.35], 12);
+    }
+  }, 400);
+}
 
     // Helper: parse Google Sheets Date(...) string to milliseconds
    function parseGoogleDateToMs(str) {
