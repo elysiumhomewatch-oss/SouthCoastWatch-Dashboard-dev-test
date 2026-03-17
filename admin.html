@@ -225,6 +225,7 @@
       if (!data.success) throw new Error(data.error || "Failed to load alerts");
 
       adminAllAlerts = data.alerts;
+      console.log("First few alerts coords:", adminAllAlerts.slice(0,3).map(a => ({ lat: a.lat, lng: a.lng, zone: a.zone })));
       console.log("Total alerts loaded:", adminAllAlerts.length);
 
       // Create persistent markers once (like public script)
