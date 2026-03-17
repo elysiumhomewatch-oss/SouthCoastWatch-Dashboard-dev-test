@@ -79,412 +79,412 @@
   </div>
 
   <script>
-  // ────────────────────────────────────────────────
-  // CONFIG
-  // ────────────────────────────────────────────────
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyT27PxzMVY3KxMoiccBTipjQQ-44IYxQJqhuRB1v8tCXu7LUpMpcALeHltcl0RoZaW/exec";
+    // ────────────────────────────────────────────────
+    // CONFIG
+    // ────────────────────────────────────────────────
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyT27PxzMVY3KxMoiccBTipjQQ-44IYxQJqhuRB1v8tCXu7LUpMpcALeHltcl0RoZaW/exec";
 
-  const storedAuth = JSON.parse(localStorage.getItem('adminAuth') || 'null');
-  if (!storedAuth || !storedAuth.email || !storedAuth.token) {
-    alert("Please log in from the main dashboard first.");
-    window.location.href = "/";
-  }
-
-  // Alert colors
-  const alertColors = {
-    "general": { fill: "#d32f2f", border: "#b71c1c" },
-    "red wave": { fill: "#1976d2", border: "#0d47a1" },
-    "amber blaze": { fill: "#f57c00", border: "#ef6c00" },
-    "scam": { fill: "#7b1fa2", border: "#4a148c" },
-    "electrical": { fill: "#fbc02d", border: "#f9a825" },
-    "water": { fill: "#42a5f5", border: "#1976d2" },
-    "illegal dumping": { fill: "#795548", border: "#4e342e" },
-    "municipal": { fill: "#757575", border: "#424242" },
-    "other": { fill: "#424242", border: "#212121" }
-  };
-
-  // Zone fallback centers
-  const zoneCenters = {
-    "Highway West": [-30.464248, 30.637618],
-    "Sea East": [-30.90, 30.45],
-    "River North": [-30.82, 30.38],
-    "River South": [-30.88, 30.32],
-    "Central": [-30.85, 30.35],
-    "Unknown": [-30.85, 30.35]
-  };
-
-  // Filter state
-  let adminAllAlerts = [];
-  let adminAllMarkers = [];
-  let adminActiveTypes = new Set();
-  let adminTimeFilterDays = Infinity;
-  let adminShowActiveOnly = true;
-
-  const adminAlertTypesConfig = [
-    { key: "general", label: "General/Suspicious" },
-    { key: "red wave", label: "Red Wave (Flood)" },
-    { key: "amber blaze", label: "Amber Blaze (Fire Hazard)" },
-    { key: "scam", label: "Scam/Doorstep" },
-    { key: "electrical", label: "Electrical Fault" },
-    { key: "water", label: "Water Leak/Interruption" },
-    { key: "illegal dumping", label: "Illegal Dumping" },
-    { key: "municipal", label: "Municipal (Potholes/Lights/Bushes)" },
-    { key: "other", label: "Other" }
-  ];
-
-  // ────────────────────────────────────────────────
-  // Initialize map + cluster group
-  // ────────────────────────────────────────────────
-  const map = L.map('map', {
-    center: [-30.85, 30.35],
-    zoom: 12,
-    maxZoom: 19
-  });
-
-  const markersCluster = L.markerClusterGroup({
-    maxClusterRadius: 40,
-    spiderfyOnMaxZoom: true,
-    showCoverageOnHover: false,
-    zoomToBoundsOnClick: true,
-    animate: true,
-    iconCreateFunction: function(cluster) {
-      const childMarkers = cluster.getAllChildMarkers();
-      const typeCounts = {};
-      childMarkers.forEach(m => {
-        const t = m.options.alertType || 'other';
-        typeCounts[t] = (typeCounts[t] || 0) + 1;
-      });
-      let dominant = 'other';
-      let max = 0;
-      for (const t in typeCounts) {
-        if (typeCounts[t] > max) { max = typeCounts[t]; dominant = t; }
-      }
-      const color = alertColors[dominant]?.fill || '#424242';
-      return L.divIcon({
-        html: `<div style="background:${color};color:white;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;border:3px solid #fff;">${cluster.getChildCount()}</div>`,
-        className: 'custom-cluster',
-        iconSize: [40, 40]
-      });
+    const storedAuth = JSON.parse(localStorage.getItem('adminAuth') || 'null');
+    if (!storedAuth || !storedAuth.email || !storedAuth.token) {
+      alert("Please log in from the main dashboard first.");
+      window.location.href = "/";
     }
-  });
-  map.addLayer(markersCluster);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxZoom: 19
-  }).addTo(map);
+    // Alert colors
+    const alertColors = {
+      "general": { fill: "#d32f2f", border: "#b71c1c" },
+      "red wave": { fill: "#1976d2", border: "#0d47a1" },
+      "amber blaze": { fill: "#f57c00", border: "#ef6c00" },
+      "scam": { fill: "#7b1fa2", border: "#4a148c" },
+      "electrical": { fill: "#fbc02d", border: "#f9a825" },
+      "water": { fill: "#42a5f5", border: "#1976d2" },
+      "illegal dumping": { fill: "#795548", border: "#4e342e" },
+      "municipal": { fill: "#757575", border: "#424242" },
+      "other": { fill: "#424242", border: "#212121" }
+    };
 
-  // ────────────────────────────────────────────────
-  // Auth check
-  // ────────────────────────────────────────────────
-  async function verifyAdminAuth() {
-    const params = new URLSearchParams({
-      action: "check-auth",
-      email: storedAuth.email.trim(),
-      token: storedAuth.token.trim()
+    // Zone fallback centers
+    const zoneCenters = {
+      "Highway West": [-30.464248, 30.637618],
+      "Sea East": [-30.90, 30.45],
+      "River North": [-30.82, 30.38],
+      "River South": [-30.88, 30.32],
+      "Central": [-30.85, 30.35],
+      "Unknown": [-30.85, 30.35]
+    };
+
+    // Filter state
+    let adminAllAlerts = [];
+    let adminAllMarkers = [];
+    let adminActiveTypes = new Set();
+    let adminTimeFilterDays = Infinity;
+    let adminShowActiveOnly = true;
+
+    const adminAlertTypesConfig = [
+      { key: "general", label: "General/Suspicious" },
+      { key: "red wave", label: "Red Wave (Flood)" },
+      { key: "amber blaze", label: "Amber Blaze (Fire Hazard)" },
+      { key: "scam", label: "Scam/Doorstep" },
+      { key: "electrical", label: "Electrical Fault" },
+      { key: "water", label: "Water Leak/Interruption" },
+      { key: "illegal dumping", label: "Illegal Dumping" },
+      { key: "municipal", label: "Municipal (Potholes/Lights/Bushes)" },
+      { key: "other", label: "Other" }
+    ];
+
+    // ────────────────────────────────────────────────
+    // Initialize map + cluster group
+    // ────────────────────────────────────────────────
+    const map = L.map('map', {
+      center: [-30.85, 30.35],
+      zoom: 12,
+      maxZoom: 19
     });
 
-    try {
-      const res = await fetch(`${SCRIPT_URL}?${params}`);
-      const data = await res.json();
-      console.log("Server auth response:", data);
-      if (!data.success || !data.isAdmin) {
-        alert("Session invalid. Please log in again.");
-        localStorage.removeItem('adminAuth');
-        window.location.href = "/";
-        return false;
+    const markersCluster = L.markerClusterGroup({
+      maxClusterRadius: 40,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      animate: true,
+      iconCreateFunction: function(cluster) {
+        const childMarkers = cluster.getAllChildMarkers();
+        const typeCounts = {};
+        childMarkers.forEach(m => {
+          const t = m.options.alertType || 'other';
+          typeCounts[t] = (typeCounts[t] || 0) + 1;
+        });
+        let dominant = 'other';
+        let max = 0;
+        for (const t in typeCounts) {
+          if (typeCounts[t] > max) { max = typeCounts[t]; dominant = t; }
+        }
+        const color = alertColors[dominant]?.fill || '#424242';
+        return L.divIcon({
+          html: `<div style="background:${color};color:white;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;border:3px solid #fff;">${cluster.getChildCount()}</div>`,
+          className: 'custom-cluster',
+          iconSize: [40, 40]
+        });
       }
-      return true;
-    } catch (err) {
-      console.error("Auth failed:", err);
-      document.getElementById('error').textContent = "Auth check failed.";
-      document.getElementById('error').style.display = 'block';
-      return false;
-    }
-  }
+    });
+    map.addLayer(markersCluster);
 
-  // ────────────────────────────────────────────────
-  // Load alerts + create persistent markers (once only)
-  // ────────────────────────────────────────────────
-  async function loadAlerts() {
-    document.getElementById('loading').textContent = "Verifying access...";
-    if (!(await verifyAdminAuth())) return;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19
+    }).addTo(map);
 
-    document.getElementById('loading').textContent = "Loading alerts...";
-
-    try {
+    // ────────────────────────────────────────────────
+    // Auth check
+    // ────────────────────────────────────────────────
+    async function verifyAdminAuth() {
       const params = new URLSearchParams({
-        action: "get-alerts",
+        action: "check-auth",
         email: storedAuth.email.trim(),
         token: storedAuth.token.trim()
       });
 
-      const res = await fetch(`${SCRIPT_URL}?${params}`);
-      const data = await res.json();
+      try {
+        const res = await fetch(`${SCRIPT_URL}?${params}`);
+        const data = await res.json();
+        console.log("Server auth response:", data);
+        if (!data.success || !data.isAdmin) {
+          alert("Session invalid. Please log in again.");
+          localStorage.removeItem('adminAuth');
+          window.location.href = "/";
+          return false;
+        }
+        return true;
+      } catch (err) {
+        console.error("Auth failed:", err);
+        document.getElementById('error').textContent = "Auth check failed.";
+        document.getElementById('error').style.display = 'block';
+        return false;
+      }
+    }
 
-      if (!data.success) throw new Error(data.error || "Failed to load alerts");
+    // ────────────────────────────────────────────────
+    // Load alerts + create persistent markers
+    // ────────────────────────────────────────────────
+    async function loadAlerts() {
+      document.getElementById('loading').textContent = "Verifying access...";
+      if (!(await verifyAdminAuth())) return;
 
-      adminAllAlerts = data.alerts;
-      console.log("First few alerts coords:", adminAllAlerts.slice(0,3).map(a => ({ lat: a.lat, lng: a.lng, zone: a.zone })));
-      console.log("Total alerts loaded:", adminAllAlerts.length);
+      document.getElementById('loading').textContent = "Loading alerts...";
 
-      // Create persistent markers once (like public script)
-      adminAllMarkers = [];
+      try {
+        const params = new URLSearchParams({
+          action: "get-alerts",
+          email: storedAuth.email.trim(),
+          token: storedAuth.token.trim()
+        });
+
+        const res = await fetch(`${SCRIPT_URL}?${params}`);
+        const data = await res.json();
+
+        if (!data.success) throw new Error(data.error || "Failed to load alerts");
+
+        adminAllAlerts = data.alerts;
+        console.log("Total alerts loaded:", adminAllAlerts.length);
+
+        // Create persistent markers once
+        adminAllMarkers = [];
+        markersCluster.clearLayers();
+
+        adminAllAlerts.forEach(alert => {
+          let lat = parseFloat(alert.lat);
+          let lng = parseFloat(alert.lng);
+
+          if (isNaN(lat) || isNaN(lng)) {
+            const fb = zoneCenters[alert.zone] || zoneCenters["Unknown"];
+            lat = fb[0];
+            lng = fb[1];
+          }
+
+          if (!isNaN(lat) && !isNaN(lng)) {
+            let colorInfo = alertColors["other"];
+            let finalType = "other";
+
+            const typeLower = (alert.type || "").toLowerCase().trim();
+            if (typeLower.includes("general") || typeLower.includes("suspicious")) { colorInfo = alertColors["general"]; finalType = "general"; }
+            else if (typeLower.includes("red wave") || typeLower.includes("flood")) { colorInfo = alertColors["red wave"]; finalType = "red wave"; }
+            else if (typeLower.includes("amber blaze") || typeLower.includes("fire") || typeLower.includes("hazard")) { colorInfo = alertColors["amber blaze"]; finalType = "amber blaze"; }
+            else if (typeLower.includes("scam") || typeLower.includes("doorstep")) { colorInfo = alertColors["scam"]; finalType = "scam"; }
+            else if (typeLower.includes("electrical") || typeLower.includes("fault")) { colorInfo = alertColors["electrical"]; finalType = "electrical"; }
+            else if (typeLower.includes("water") || typeLower.includes("leak") || typeLower.includes("interruption")) { colorInfo = alertColors["water"]; finalType = "water"; }
+            else if (typeLower.includes("illegal dumping")) { colorInfo = alertColors["illegal dumping"]; finalType = "illegal dumping"; }
+            else if (typeLower.includes("municipal") || typeLower.includes("pothole") || typeLower.includes("light") || typeLower.includes("bush")) { colorInfo = alertColors["municipal"]; finalType = "municipal"; }
+
+            const marker = L.circleMarker([lat, lng], {
+              radius: 10,
+              fillColor: colorInfo.fill,
+              color: colorInfo.border,
+              weight: 2,
+              opacity: 1,
+              fillOpacity: 0.85
+            });
+
+            marker.bindPopup(`
+              <b>${alert.type || 'Other'} - ${alert.zone || 'Unknown'}</b><br>
+              Reported: ${alert.timestamp || 'Unknown'}<br>
+              By: ${alert.reporter || 'Anonymous'}<br>
+              Status: ${alert.status || 'Unspecified'}<br>
+              ${alert.photo ? `<a href="${alert.photo}" target="_blank">View Photo</a>` : ''}
+            `);
+
+            marker.options.alertType = finalType;
+            marker.options.status = alert.status || '';
+            marker.options.timestamp = alert.timestamp || '';
+            marker.options.row = alert.row;
+
+            marker.addTo(markersCluster);
+            adminAllMarkers.push(marker);
+          }
+        });
+
+        // Initial auto-fit
+        setTimeout(() => {
+          console.log("Initial markers:", markersCluster.getLayers().length);
+          if (markersCluster.getLayers().length > 0) {
+            const bounds = markersCluster.getBounds();
+            if (bounds.isValid()) {
+              map.fitBounds(bounds, { padding: [50, 50] });
+            }
+          }
+        }, 800);
+
+        // Populate type filters
+        const typeDiv = document.getElementById('admin-type-filters');
+        adminAlertTypesConfig.forEach(t => {
+          const lbl = document.createElement('label');
+          lbl.style = 'display:flex;align-items:center;gap:6px;cursor:pointer;';
+          lbl.innerHTML = `<input type="checkbox" class="admin-type-checkbox" value="${t.key}" checked> ${t.label}`;
+          typeDiv.appendChild(lbl);
+        });
+
+        // Set defaults to show everything
+        adminActiveTypes = new Set(adminAlertTypesConfig.map(t => t.key));
+        adminTimeFilterDays = Infinity;
+        adminShowActiveOnly = false;
+
+        // Sync UI
+        document.querySelector('input[name="adminTimeFilter"][value="all"]').checked = true;
+        document.getElementById('admin-active-only').checked = false;
+        document.querySelectorAll('.admin-type-checkbox').forEach(cb => cb.checked = true);
+
+        // Filter listeners
+        document.querySelectorAll('.admin-type-checkbox').forEach(cb => {
+          cb.addEventListener('change', () => {
+            cb.checked ? adminActiveTypes.add(cb.value) : adminActiveTypes.delete(cb.value);
+            applyAdminFilters();
+          });
+        });
+
+        document.querySelectorAll('input[name="adminTimeFilter"]').forEach(r => {
+          r.addEventListener('change', () => {
+            adminTimeFilterDays = r.value === 'all' ? Infinity : Number(r.value);
+            applyAdminFilters();
+          });
+        });
+
+        document.getElementById('admin-active-only').addEventListener('change', e => {
+          adminShowActiveOnly = e.target.checked;
+          applyAdminFilters();
+        });
+
+        document.getElementById('admin-reset-filters').addEventListener('click', () => {
+          document.querySelectorAll('.admin-type-checkbox').forEach(cb => {
+            cb.checked = true;
+            adminActiveTypes.add(cb.value);
+          });
+          document.querySelector('input[name="adminTimeFilter"][value="all"]').checked = true;
+          adminTimeFilterDays = Infinity;
+          document.getElementById('admin-active-only').checked = true;
+          adminShowActiveOnly = false;
+          applyAdminFilters();
+        });
+
+        // Initial render
+        applyAdminFilters();
+
+        document.getElementById('loading').style.display = 'none';
+
+      } catch (err) {
+        console.error("Load error:", err);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error').textContent = err.message;
+        document.getElementById('error').style.display = 'block';
+      }
+    }
+
+    // ────────────────────────────────────────────────
+    // Apply filters (add/remove existing markers)
+    // ────────────────────────────────────────────────
+    function applyAdminFilters() {
       markersCluster.clearLayers();
 
-      adminAllAlerts.forEach(alert => {
-        let lat = alert.lat;
-        let lng = alert.lng;
-if (isNaN(lat) || isNaN(lng))
-        if (isNaN(lat) || isNaN(lng)) {
-          const fb = zoneCenters[alert.zone] || zoneCenters["Unknown"];
-          lat = fb[0];
-          lng = fb[1];
+      adminAllMarkers.forEach(marker => {
+        const alert = adminAllAlerts.find(a => a.row === marker.options.row);
+        if (!alert) return;
+
+        const type = (alert.type || 'other').toLowerCase().trim();
+        const typeMatch = adminActiveTypes.size === 0 || adminActiveTypes.has(type);
+
+        let timeMatch = true;
+        if (adminTimeFilterDays !== Infinity && alert.timestamp) {
+          const ms = parseGoogleDateToMs(alert.timestamp);
+          if (ms) {
+            const daysOld = (Date.now() - ms) / 86400000;
+            timeMatch = daysOld <= adminTimeFilterDays;
+          }
         }
 
-        if (!isNaN(lat) && !isNaN(lng)) {
-          let colorInfo = alertColors["other"];
-          let finalType = "other";
+        const activeMatch = !adminShowActiveOnly || (alert.status || '').toLowerCase() !== 'resolved';
 
-          const typeLower = (alert.type || "").toLowerCase().trim();
-          if (typeLower.includes("general") || typeLower.includes("suspicious")) { colorInfo = alertColors["general"]; finalType = "general"; }
-          else if (typeLower.includes("red wave") || typeLower.includes("flood")) { colorInfo = alertColors["red wave"]; finalType = "red wave"; }
-          else if (typeLower.includes("amber blaze") || typeLower.includes("fire") || typeLower.includes("hazard")) { colorInfo = alertColors["amber blaze"]; finalType = "amber blaze"; }
-          else if (typeLower.includes("scam") || typeLower.includes("doorstep")) { colorInfo = alertColors["scam"]; finalType = "scam"; }
-          else if (typeLower.includes("electrical") || typeLower.includes("fault")) { colorInfo = alertColors["electrical"]; finalType = "electrical"; }
-          else if (typeLower.includes("water") || typeLower.includes("leak") || typeLower.includes("interruption")) { colorInfo = alertColors["water"]; finalType = "water"; }
-          else if (typeLower.includes("illegal dumping")) { colorInfo = alertColors["illegal dumping"]; finalType = "illegal dumping"; }
-          else if (typeLower.includes("municipal") || typeLower.includes("pothole") || typeLower.includes("light") || typeLower.includes("bush")) { colorInfo = alertColors["municipal"]; finalType = "municipal"; }
-
-          const marker = L.circleMarker([lat, lng], {
-            radius: 10,
-            fillColor: colorInfo.fill,
-            color: colorInfo.border,
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.85
-          });
-
-          marker.bindPopup(`
-            <b>${alert.type || 'Other'} - ${alert.zone || 'Unknown'}</b><br>
-            Reported: ${alert.timestamp || 'Unknown'}<br>
-            By: ${alert.reporter || 'Anonymous'}<br>
-            Status: ${alert.status || 'Unspecified'}<br>
-            ${alert.photo ? `<a href="${alert.photo}" target="_blank">View Photo</a>` : ''}
-          `);
-
-          marker.options.alertType = finalType;
-          marker.options.status = alert.status || '';
-          marker.options.timestamp = alert.timestamp || '';
-
+        if (typeMatch && timeMatch && activeMatch) {
           marker.addTo(markersCluster);
-          adminAllMarkers.push(marker);
         }
       });
 
-      // Initial auto-fit
+      // Auto-fit
       setTimeout(() => {
-        console.log("Initial markers:", markersCluster.getLayers().length);
+        console.log("Filtered markers:", markersCluster.getLayers().length);
         if (markersCluster.getLayers().length > 0) {
           const bounds = markersCluster.getBounds();
           if (bounds.isValid()) {
             map.fitBounds(bounds, { padding: [50, 50] });
           }
         }
-      }, 800);
+      }, 400);
 
-      // Populate type filters
-      const typeDiv = document.getElementById('admin-type-filters');
-      adminAlertTypesConfig.forEach(t => {
-        const lbl = document.createElement('label');
-        lbl.style = 'display:flex;align-items:center;gap:6px;cursor:pointer;';
-        lbl.innerHTML = `<input type="checkbox" class="admin-type-checkbox" value="${t.key}" checked> ${t.label}`;
-        typeDiv.appendChild(lbl);
-      });
+      // Update table
+      const tbody = document.getElementById('alert-table-body');
+      tbody.innerHTML = '';
+      adminAllAlerts.filter(a => {
+        const type = (a.type || 'other').toLowerCase().trim();
+        const typeMatch = adminActiveTypes.size === 0 || adminActiveTypes.has(type);
 
-      // Set defaults to show everything
-      adminActiveTypes = new Set(adminAlertTypesConfig.map(t => t.key));
-      adminTimeFilterDays = Infinity;
-      adminShowActiveOnly = false;
-
-      // Sync UI
-      document.querySelector('input[name="adminTimeFilter"][value="all"]').checked = true;
-      document.getElementById('admin-active-only').checked = false;
-      document.querySelectorAll('.admin-type-checkbox').forEach(cb => cb.checked = true);
-
-      // Filter listeners
-      document.querySelectorAll('.admin-type-checkbox').forEach(cb => {
-        cb.addEventListener('change', () => {
-          cb.checked ? adminActiveTypes.add(cb.value) : adminActiveTypes.delete(cb.value);
-          applyAdminFilters();
-        });
-      });
-
-      document.querySelectorAll('input[name="adminTimeFilter"]').forEach(r => {
-        r.addEventListener('change', () => {
-          adminTimeFilterDays = r.value === 'all' ? Infinity : Number(r.value);
-          applyAdminFilters();
-        });
-      });
-
-      document.getElementById('admin-active-only').addEventListener('change', e => {
-        adminShowActiveOnly = e.target.checked;
-        applyAdminFilters();
-      });
-
-      document.getElementById('admin-reset-filters').addEventListener('click', () => {
-        document.querySelectorAll('.admin-type-checkbox').forEach(cb => {
-          cb.checked = true;
-          adminActiveTypes.add(cb.value);
-        });
-        document.querySelector('input[name="adminTimeFilter"][value="all"]').checked = true;
-        adminTimeFilterDays = Infinity;
-        document.getElementById('admin-active-only').checked = true;
-        adminShowActiveOnly = false;
-        applyAdminFilters();
-      });
-
-      // Initial render
-      applyAdminFilters();
-
-      document.getElementById('loading').style.display = 'none';
-
-    } catch (err) {
-      console.error("Load error:", err);
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('error').textContent = err.message;
-      document.getElementById('error').style.display = 'block';
-    }
-  }
-
-  // ────────────────────────────────────────────────
-  // Apply filters (add/remove existing markers)
-  // ────────────────────────────────────────────────
-  function applyAdminFilters() {
-    markersCluster.clearLayers();
-
-    adminAllMarkers.forEach(marker => {
-      const alert = adminAllAlerts.find(a => a.row === marker.options.row);
-      if (!alert) return;
-
-      const type = (alert.type || 'other').toLowerCase().trim();
-      const typeMatch = adminActiveTypes.size === 0 || adminActiveTypes.has(type);
-
-      let timeMatch = true;
-      if (adminTimeFilterDays !== Infinity && alert.timestamp) {
-        const ms = parseGoogleDateToMs(alert.timestamp);
-        if (ms) {
-          const daysOld = (Date.now() - ms) / 86400000;
-          timeMatch = daysOld <= adminTimeFilterDays;
+        let timeMatch = true;
+        if (adminTimeFilterDays !== Infinity && a.timestamp) {
+          const ms = parseGoogleDateToMs(a.timestamp);
+          if (ms) {
+            const daysOld = (Date.now() - ms) / 86400000;
+            timeMatch = daysOld <= adminTimeFilterDays;
+          }
         }
+
+        const activeMatch = !adminShowActiveOnly || (a.status || '').toLowerCase() !== 'resolved';
+
+        return typeMatch && timeMatch && activeMatch;
+      }).forEach(a => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${a.timestamp || '—'}</td>
+          <td>${a.type || 'Other'}</td>
+          <td>${a.zone || 'Unknown'}</td>
+          <td>${a.reporter || 'Anonymous'}</td>
+          <td>
+            <select class="status-select" data-row="${a.row}">
+              <option value="pending" ${a.status === 'pending' ? 'selected' : ''}>Pending</option>
+              <option value="in-progress" ${a.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+              <option value="resolved" ${a.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+            </select>
+          </td>
+          <td><button class="view-btn" data-lat="${a.lat||''}" data-lng="${a.lng||''}">View on Map</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Re-attach listeners
+      document.querySelectorAll('.status-select').forEach(s => s.addEventListener('change', updateStatus));
+      document.querySelectorAll('.view-btn').forEach(b => b.addEventListener('click', zoomToMarker));
+    }
+
+    // Helpers
+    function parseGoogleDateToMs(str) {
+      if (!str || !str.startsWith('Date(')) return null;
+      const m = str.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
+      if (!m) return null;
+      const [,y,mo,d,h,mi,s] = m.map(Number);
+      return new Date(y, mo, d, h, mi, s).getTime();
+    }
+
+    async function updateStatus() {
+      const row = this.dataset.row;
+      const status = this.value;
+      if (!confirm(`Set status to "${status}"?`)) {
+        this.value = this.dataset.current || 'pending';
+        return;
       }
+      const p = new URLSearchParams({ action:"update-status", row, status, email:storedAuth.email.trim(), token:storedAuth.token.trim() });
+      try {
+        const r = await fetch(`${SCRIPT_URL}?${p}`);
+        const res = await r.json();
+        if (res.success) alert("Updated");
+        else alert("Failed: " + (res.error || "Unknown"));
+      } catch {
+        alert("Network error");
+        this.value = this.dataset.current || 'pending';
+      }
+    }
 
-      const activeMatch = !adminShowActiveOnly || (alert.status || '').toLowerCase() !== 'resolved';
+    function zoomToMarker() {
+      const lat = parseFloat(this.dataset.lat);
+      const lng = parseFloat(this.dataset.lng);
+      if (!isNaN(lat) && !isNaN(lng)) map.setView([lat, lng], 15);
+      else alert("No location data");
+    }
 
-      if (typeMatch && timeMatch && activeMatch) {
-        marker.addTo(markersCluster);
+    // Logout
+    document.getElementById('logout').addEventListener('click', () => {
+      if (confirm("Logout?")) {
+        localStorage.removeItem('adminAuth');
+        window.location.href = "/";
       }
     });
 
-    // Auto-fit
-    setTimeout(() => {
-      console.log("Filtered markers:", markersCluster.getLayers().length);
-      if (markersCluster.getLayers().length > 0) {
-        const bounds = markersCluster.getBounds();
-        if (bounds.isValid()) {
-          map.fitBounds(bounds, { padding: [50, 50] });
-        }
-      }
-    }, 400);
-
-    // Update table
-    const tbody = document.getElementById('alert-table-body');
-    tbody.innerHTML = '';
-    adminAllAlerts.filter(a => {
-      const type = (a.type || 'other').toLowerCase().trim();
-      const typeMatch = adminActiveTypes.size === 0 || adminActiveTypes.has(type);
-
-      let timeMatch = true;
-      if (adminTimeFilterDays !== Infinity && a.timestamp) {
-        const ms = parseGoogleDateToMs(a.timestamp);
-        if (ms) {
-          const daysOld = (Date.now() - ms) / 86400000;
-          timeMatch = daysOld <= adminTimeFilterDays;
-        }
-      }
-
-      const activeMatch = !adminShowActiveOnly || (a.status || '').toLowerCase() !== 'resolved';
-
-      return typeMatch && timeMatch && activeMatch;
-    }).forEach(a => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${a.timestamp || '—'}</td>
-        <td>${a.type || 'Other'}</td>
-        <td>${a.zone || 'Unknown'}</td>
-        <td>${a.reporter || 'Anonymous'}</td>
-        <td>
-          <select class="status-select" data-row="${a.row}">
-            <option value="pending" ${a.status === 'pending' ? 'selected' : ''}>Pending</option>
-            <option value="in-progress" ${a.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
-            <option value="resolved" ${a.status === 'resolved' ? 'selected' : ''}>Resolved</option>
-          </select>
-        </td>
-        <td><button class="view-btn" data-lat="${a.lat||''}" data-lng="${a.lng||''}">View on Map</button></td>
-      `;
-      tbody.appendChild(tr);
-    });
-
-    // Re-attach listeners
-    document.querySelectorAll('.status-select').forEach(s => s.addEventListener('change', updateStatus));
-    document.querySelectorAll('.view-btn').forEach(b => b.addEventListener('click', zoomToMarker));
-  }
-
-  // Helpers
-  function parseGoogleDateToMs(str) {
-    if (!str || !str.startsWith('Date(')) return null;
-    const m = str.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
-    if (!m) return null;
-    const [,y,mo,d,h,mi,s] = m.map(Number);
-    return new Date(y, mo, d, h, mi, s).getTime();
-  }
-
-  async function updateStatus() {
-    const row = this.dataset.row;
-    const status = this.value;
-    if (!confirm(`Set status to "${status}"?`)) {
-      this.value = this.dataset.current || 'pending';
-      return;
-    }
-    const p = new URLSearchParams({ action:"update-status", row, status, email:storedAuth.email.trim(), token:storedAuth.token.trim() });
-    try {
-      const r = await fetch(`${SCRIPT_URL}?${p}`);
-      const res = await r.json();
-      if (res.success) alert("Updated");
-      else alert("Failed: " + (res.error || "Unknown"));
-    } catch {
-      alert("Network error");
-      this.value = this.dataset.current || 'pending';
-    }
-  }
-
-  function zoomToMarker() {
-    const lat = parseFloat(this.dataset.lat);
-    const lng = parseFloat(this.dataset.lng);
-    if (!isNaN(lat) && !isNaN(lng)) map.setView([lat, lng], 15);
-    else alert("No location data");
-  }
-
-  // Logout
-  document.getElementById('logout').addEventListener('click', () => {
-    if (confirm("Logout?")) {
-      localStorage.removeItem('adminAuth');
-      window.location.href = "/";
-    }
-  });
-
-  // Start
-  loadAlerts();
+    // Start
+    loadAlerts();
   </script>
 </body>
 </html>
