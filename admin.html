@@ -410,14 +410,28 @@
     }
 
     // Helper: parse Google Sheets Date(...) string to milliseconds
-    function parseGoogleDateToMs(str) {
-      if (!str || !str.startsWith('Date(')) return null;
-      const match = str.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
-      if (!match) return null;
+   function parseGoogleDateToMs(str) {
+  if (!str) return null;
+
+  // Format 1: Google Sheets serialized Date(...) string
+  if (str.startsWith('Date(')) {
+    const match = str.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
+    if (match) {
       const [, year, month0, day, hour, min, sec] = match.map(Number);
-      const date = new Date(year, month0, day, hour, min, sec);
-      return date.getTime();
+      return new Date(year, month0, day, hour, min, sec).getTime();
     }
+  }
+
+  // Format 2: ISO 8601 string (e.g. 2026-02-17T17:59:05.498Z)
+  const isoDate = new Date(str);
+  if (!isNaN(isoDate.getTime())) {
+    return isoDate.getTime();
+  }
+
+  // If neither format matches
+  console.warn("Unrecognized timestamp format:", str);
+  return null;
+}
 
     // Logout handler
     document.getElementById('logout').addEventListener('click', () => {
