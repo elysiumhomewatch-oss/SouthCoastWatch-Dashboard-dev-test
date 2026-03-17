@@ -154,10 +154,13 @@
   // ────────────────────────────────────────────────
 // Initialize map + cluster group
 // ────────────────────────────────────────────────
+// ────────────────────────────────────────────────
+// Initialize map + cluster group
+// ────────────────────────────────────────────────
 const map = L.map('map', {
   center: [-30.85, 30.35],
   zoom: 12,
-  maxZoom: 19   // required for MarkerCluster to work properly
+  maxZoom: 19
 });
 
 const markersCluster = L.markerClusterGroup({
@@ -190,88 +193,82 @@ map.addLayer(markersCluster);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  maxZoom: 19   // also good to match here
+  maxZoom: 19
 }).addTo(map);
 
+// ────────────────────────────────────────────────
+// Zone fallback centers (same as index.html)
+// ────────────────────────────────────────────────
+const zoneCenters = {
+  "Highway West": [-30.464248, 30.637618],
+  "Sea East": [-30.90, 30.45],
+  "River North": [-30.82, 30.38],
+  "River South": [-30.88, 30.32],
+  "Central": [-30.85, 30.35],
+  "Unknown": [-30.85, 30.35]
+};
 
-  // ────────────────────────────────────────────────
-  // Load alerts + markers
-  // ────────────────────────────────────────────────
-  async function loadAlerts() {
-    document.getElementById('loading').textContent = "Verifying access...";
-    if (!(await verifyAdminAuth())) return;
+// ────────────────────────────────────────────────
+// Add markers from alerts (with fallback)
+// ────────────────────────────────────────────────
+data.alerts.forEach(alert => {
+  let lat = alert.lat;
+  let lng = alert.lng;
 
-    document.getElementById('loading').textContent = "Loading alerts...";
+  // Fallback if coords missing or invalid
+  if (isNaN(lat) || isNaN(lng)) {
+    const fallback = zoneCenters[alert.zone] || zoneCenters["Unknown"];
+    lat = fallback[0];
+    lng = fallback[1];
+  }
 
-    try {
-      const params = new URLSearchParams({
-        action: "get-alerts",
-        email: storedAuth.email.trim(),
-        token: storedAuth.token.trim()
-      });
+  // Only add if we now have valid numbers
+  if (!isNaN(lat) && !isNaN(lng)) {
+    let colorInfo = alertColors["other"];
+    let finalType = "other";
 
-      const res = await fetch(`${SCRIPT_URL}?${params}`);
-      const data = await res.json();
+    const typeLower = (alert.type || "").toLowerCase().trim();
+    if (typeLower.includes("general") || typeLower.includes("suspicious")) { colorInfo = alertColors["general"]; finalType = "general"; }
+    else if (typeLower.includes("red wave") || typeLower.includes("flood")) { colorInfo = alertColors["red wave"]; finalType = "red wave"; }
+    else if (typeLower.includes("amber blaze") || typeLower.includes("fire") || typeLower.includes("hazard")) { colorInfo = alertColors["amber blaze"]; finalType = "amber blaze"; }
+    else if (typeLower.includes("scam") || typeLower.includes("doorstep")) { colorInfo = alertColors["scam"]; finalType = "scam"; }
+    else if (typeLower.includes("electrical") || typeLower.includes("fault")) { colorInfo = alertColors["electrical"]; finalType = "electrical"; }
+    else if (typeLower.includes("water") || typeLower.includes("leak") || typeLower.includes("interruption")) { colorInfo = alertColors["water"]; finalType = "water"; }
+    else if (typeLower.includes("illegal dumping")) { colorInfo = alertColors["illegal dumping"]; finalType = "illegal dumping"; }
+    else if (typeLower.includes("municipal") || typeLower.includes("pothole") || typeLower.includes("light") || typeLower.includes("bush")) { colorInfo = alertColors["municipal"]; finalType = "municipal"; }
 
-      if (!data.success) throw new Error(data.error || "Failed to load alerts");
+    const marker = L.circleMarker([lat, lng], {
+      radius: 10,
+      fillColor: colorInfo.fill,
+      color: colorInfo.border,
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.85
+    });
 
-      adminAllAlerts = data.alerts;
+    marker.bindPopup(`
+      <b>${alert.type || 'Other'} - ${alert.zone || 'Unknown'}</b><br>
+      Reported: ${alert.timestamp || 'Unknown'}<br>
+      By: ${alert.reporter || 'Anonymous'}<br>
+      Status: ${alert.status || 'Unspecified'}<br>
+      ${alert.photo ? `<a href="${alert.photo}" target="_blank">View Photo</a>` : ''}
+    `);
 
-      // Populate type filters
-      const typeDiv = document.getElementById('admin-type-filters');
-      adminAlertTypesConfig.forEach(t => {
-        const lbl = document.createElement('label');
-        lbl.style = 'display:flex;align-items:center;gap:6px;cursor:pointer;';
-        lbl.innerHTML = `<input type="checkbox" class="admin-type-checkbox" value="${t.key}" checked> ${t.label}`;
-        typeDiv.appendChild(lbl);
-      });
+    marker.options.alertType = finalType;
+    marker.addTo(markersCluster);
+  }
+});
 
-      adminActiveTypes = new Set(adminAlertTypesConfig.map(t => t.key));
-
-      // Filter listeners
-      document.querySelectorAll('.admin-type-checkbox').forEach(cb => {
-        cb.addEventListener('change', () => {
-          cb.checked ? adminActiveTypes.add(cb.value) : adminActiveTypes.delete(cb.value);
-          applyAdminFilters();
-        });
-      });
-
-      document.querySelectorAll('input[name="adminTimeFilter"]').forEach(r => {
-        r.addEventListener('change', () => {
-          adminTimeFilterDays = r.value === 'all' ? Infinity : Number(r.value);
-          applyAdminFilters();
-        });
-      });
-
-      document.getElementById('admin-active-only').addEventListener('change', e => {
-        adminShowActiveOnly = e.target.checked;
-        applyAdminFilters();
-      });
-
-      document.getElementById('admin-reset-filters').addEventListener('click', () => {
-        document.querySelectorAll('.admin-type-checkbox').forEach(cb => {
-          cb.checked = true;
-          adminActiveTypes.add(cb.value);
-        });
-        document.querySelector('input[name="adminTimeFilter"][value="all"]').checked = true;
-        adminTimeFilterDays = Infinity;
-        document.getElementById('admin-active-only').checked = true;
-        adminShowActiveOnly = true;
-        applyAdminFilters();
-      });
-
-      // Initial filter + markers
-      applyAdminFilters();
-
-      document.getElementById('loading').style.display = 'none';
-
-    } catch (err) {
-      console.error(err);
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('error').textContent = err.message;
-      document.getElementById('error').style.display = 'block';
+// Auto-fit to all markers (with delay so cluster updates)
+setTimeout(() => {
+  console.log("Total markers in cluster:", markersCluster.getLayers().length);
+  if (markersCluster.getLayers().length > 0) {
+    const bounds = markersCluster.getBounds();
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [50, 50] });
     }
   }
+}, 800);   // increased delay slightly — helps cluster recalculate
 
   // ────────────────────────────────────────────────
   // Filter function (table + markers)
